@@ -1,7 +1,8 @@
-// node tools/gen.mjs out/name.png "<scene>" [size]
+// node tools/gen.mjs out/name.png "<scene>" [size] [photo|illus]
 import fs from 'fs'; import {key} from './env.mjs';
 const PRE=`Documentary outdoor photograph, Canadian Rockies, Banff National Park. Shot on a full-frame camera with a 35mm lens, natural light only, early morning overcast with soft cool light, muted desaturated palette of slate blue, deep spruce green, pale limestone grey and cold glacial water. Quiet, sparse, premium outdoor-brand catalogue look (in the spirit of Arc'teryx and Patagonia field photography). Fine film grain, true-to-life colour, no HDR, no oversaturation, no text, no logos, no watermarks, no people facing camera.`;
-const [out,scene,size='1536x1024']=process.argv.slice(2);
-const r=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',headers:{Authorization:'Bearer '+key(),'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2',prompt:PRE+'\n\n'+scene,size,n:1})});
+const ILLUS=`Editorial travel-poster illustration, flat screen-print style with subtle risograph grain. Strictly limited palette: deep navy #253946, slate blue #95A7B5, warm sand #D2BDA2, off-white bone #F7F5F6, with copper #A76825 used sparingly for light and warmth. Mountains and terrain are built from fine, evenly spaced topographic contour lines like a cartographer's map, in the same flowing hand-drawn linework as a contour-line logo. Clean geometric shapes, generous negative space, calm and quiet, premium outdoor-brand feel (Arc'teryx, Patagonia catalogue art). Gentle flat tonal steps only, no photorealism, no text, no lettering, no logos, no borders, no people facing the viewer.`;
+const [out,scene,size='1536x1024',style='photo']=process.argv.slice(2);
+const r=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',headers:{Authorization:'Bearer '+key(),'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2',prompt:(style==='illus'?ILLUS:PRE)+'\n\n'+scene,size,n:1})});
 const j=await r.json(); if(!r.ok){console.error(r.status,j.error?.message);process.exit(1)}
 fs.writeFileSync(out,Buffer.from(j.data[0].b64_json,'base64')); console.log('wrote',out);

@@ -5,7 +5,7 @@ const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Ap
 const ctx=await b.newContext({viewport:{width:+W,height:+H},deviceScaleFactor:1,reducedMotion:rest.includes('reduced')?'reduce':'no-preference'});
 await ctx.addInitScript(()=>{Element.prototype.setPointerCapture=()=>{};Element.prototype.requestPointerLock=()=>{};});
 const p=await ctx.newPage();const errs=[];p.on('console',m=>{if(m.type()==='error'||m.type()==='warning')errs.push(m.text())});p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('requestfailed',r=>errs.push('REQFAIL '+r.url()));
-await p.goto('http://localhost:4500/',{waitUntil:'networkidle'});await p.waitForTimeout(1500);
+await p.goto(process.env.SNAP_URL||'http://localhost:4500/',{waitUntil:'networkidle'});await p.waitForTimeout(1500);
 for(const item of list.split(',')){
   let y;
   if(item.startsWith('#')){const [sel,f='0']=item.split('@');y=await p.evaluate(([s,f])=>{const e=document.querySelector(s);const t=e.getBoundingClientRect().top+scrollY;return t+(e.offsetHeight-innerHeight)*+f},[sel,f]);}
