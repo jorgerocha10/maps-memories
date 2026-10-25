@@ -63,39 +63,55 @@ if (GL && !SEQ_MODE) {
   } catch (e) { console.warn(e); document.documentElement.classList.add('no-webgl'); heroScene = null; }
 }
 
-// Phone frame sequence: a plain 2D canvas, scrubbed by scroll. The first frame loads
-// straight away, the rest coarse-to-fine so an early scroll always has a near frame.
-const seq = SEQ_MODE ? { imgs: new Array(SEQ.count), ctx: heroCanvas.getContext('2d'), shown: -1, w: 0, h: 0 } : null;
+// Phone frame sequence, on a plain 2D canvas, scrubbed by scroll. Memory is the whole
+// point: all 97 frames are kept only as compressed files (about 2 MB), and at most
+// SEQ_DECODED of them are decoded at once (about 5 MB each). Older bitmaps are closed
+// explicitly, so a long scroll cannot pile up hundreds of MB of decoded pixels.
+const SEQ_DECODED = 8;
+const seq = SEQ_MODE ? { blobs: new Array(SEQ.count), bmps: new Map(), pending: new Set(), ctx: heroCanvas.getContext('2d'),
+  shown: -1, w: 0, h: 0, want: 0 } : null;
 if (seq) {
-  const order = [0], seen = new Set(order);
+  // First frame, then the last, then coarse-to-fine, so an early scroll always has a near frame.
+  const order = [0, SEQ.count - 1], seen = new Set(order);
   for (const stride of [16, 8, 4, 2, 1]) for (let i = 0; i < SEQ.count; i += stride) if (!seen.has(i)) { seen.add(i); order.push(i); }
-  if (!seen.has(SEQ.count - 1)) order.splice(1, 0, SEQ.count - 1);
   let next = 0;
   const pump = () => {
     if (next >= order.length) return;
-    const i = order[next++], im = new Image();
-    im.decoding = 'async';
-    im.onload = () => { seq.imgs[i] = im; seq.shown = -1; pump(); };
-    im.onerror = pump;
-    im.src = seqFile(i);
+    const i = order[next++];
+    fetch(seqFile(i)).then(r => r.ok ? r.blob() : null).then(b => { if (b) { seq.blobs[i] = b; seq.shown = -1; } }).catch(() => {}).finally(pump);
   };
   for (let k = 0; k < 4; k++) pump();   // four downloads in flight
+}
+function decodeFrame(i) {
+  if (seq.bmps.has(i) || seq.pending.has(i) || !seq.blobs[i]) return;
+  seq.pending.add(i);
+  createImageBitmap(seq.blobs[i]).then(bmp => {
+    seq.pending.delete(i);
+    if (!heroVisible) { bmp.close(); return; }   // finished decoding after the hero left the screen
+    seq.bmps.set(i, bmp); seq.shown = -1;
+    // Keep only the frames nearest to where the visitor is; free the rest now.
+    const far = [...seq.bmps.keys()].sort((a, b) => Math.abs(b - seq.want) - Math.abs(a - seq.want));
+    while (seq.bmps.size > SEQ_DECODED) { const k = far.shift(); seq.bmps.get(k).close(); seq.bmps.delete(k); }
+  }).catch(() => seq.pending.delete(i));
 }
 function drawSeq(p) {
   const c = heroCanvas, dpr = Math.min(devicePixelRatio || 1, 2);
   const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
   if (w !== seq.w || h !== seq.h) { c.width = seq.w = w; c.height = seq.h = h; seq.shown = -1; }
-  const want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
-  let i = want;
-  for (let d = 0; d < SEQ.count && !seq.imgs[i]; d++) {   // nearest frame already loaded
-    if (seq.imgs[want - d]) { i = want - d; break; }
-    if (seq.imgs[want + d]) { i = want + d; break; }
-  }
-  const im = seq.imgs[i];
-  if (!im || i === seq.shown) return;
-  const s = Math.max(w / im.width, h / im.height);   // cover, centred
+  const want = seq.want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
+  decodeFrame(want);
+  if (want + 1 < SEQ.count) decodeFrame(want + 1);
+  if (want > 0) decodeFrame(want - 1);
+  let i = -1;   // nearest decoded frame while the exact one decodes
+  for (let d = 0; d < SEQ.count && i < 0; d++) { if (seq.bmps.has(want - d)) i = want - d; else if (seq.bmps.has(want + d)) i = want + d; }
+  if (i < 0 || i === seq.shown) return;
+  const im = seq.bmps.get(i), s = Math.max(w / im.width, h / im.height);   // cover, centred
   seq.ctx.drawImage(im, (w - im.width * s) / 2, (h - im.height * s) / 2, im.width * s, im.height * s);
   seq.shown = i;
+}
+function releaseSeq() {   // hero scrolled away: free every decoded frame
+  if (!seq) return;
+  seq.bmps.forEach(b => b.close()); seq.bmps.clear(); seq.shown = -1;
 }
 const fp = () => { const d = 860, f = 30 * Math.PI / 180; return 250 / (2 * d * Math.tan(f / 2)) * 100; };
 hero.style.setProperty('--fp', fp() + 'vh');
@@ -118,7 +134,7 @@ function drawHero(p) {
     el.style.opacity = String([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p)));
   });
   const st = heroState(p), carve = st.carve;
-  if (seq) drawSeq(p);
+  if (seq && !OFF.has('frames')) drawSeq(p);
   else if (heroScene) {
     // The story is driven by the visitor's own scroll, so it plays under reduced
     // motion too. What reduced motion removes is the camera flight and the
@@ -418,25 +434,47 @@ plate.querySelector('[data-copy]').addEventListener('click', async e => {
 });
 
 /* ----------------------------------------------------------------- debug */
-// ?debug=1 shows what this device reports, for diagnosing a phone from the phone.
-const dbg = new URLSearchParams(location.search).get('debug') === '1' && Object.assign(document.createElement('pre'), { className: 'dbg' });
+// Diagnosing a phone from the phone:
+//   ?debug=1   a box with what the device reports, live hero position and memory, and
+//              where the previous visit got to if it ended without closing cleanly (a crash).
+//   ?off=...   switch parts off to find a culprit: frames, profile, readout, contours.
+const params = new URLSearchParams(location.search);
+const OFF = new Set((params.get('off') || '').split(',').map(s => s.trim()).filter(Boolean));
+if (OFF.has('profile')) route.remove();
+if (OFF.has('readout')) readout.remove();
+if (OFF.has('contours')) layers.forEach(l => l.remove());
+const store = { get: k => { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* private mode: no breadcrumbs */ } } };
+const lastVisit = (() => { try { return JSON.parse(store.get('mm-crumb')); } catch (_) { return null; } })();
+const crumb = (clean = false) => store.set('mm-crumb', JSON.stringify({ at: Date.now(), p: +heroP.toFixed(3), clean, off: [...OFF].join(','),
+  decoded: seq ? seq.bmps.size : null, heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null }));
+addEventListener('pagehide', () => crumb(true));
+const dbg = params.get('debug') === '1' && Object.assign(document.createElement('pre'), { className: 'dbg' });
 if (dbg) {
   const gl = heroScene?.renderer.getContext(), ext = gl?.getExtension('WEBGL_debug_renderer_info');
+  const prev = !lastVisit ? 'none recorded'
+    : lastVisit.clean ? `closed cleanly at hero ${lastVisit.p}`
+    : `ENDED WITHOUT CLOSING at hero ${lastVisit.p}, frames decoded ${lastVisit.decoded}, js ${lastVisit.heapMB ?? '?'} MB${lastVisit.off ? ', off=' + lastVisit.off : ''}`;
   dbg.dataset.base = [`reduced motion: ${reduce}`, `hero: ${SEQ_MODE ? 'frames (phone)' : heroScene ? 'live 3D' : 'poster'}  webgl: ${GL ? 'yes' : 'NO'}`,
-    `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}`].join('\n');
+    `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}  ram: ${navigator.deviceMemory ?? '?'} GB`,
+    `off: ${[...OFF].join(',') || 'nothing'}`, `last visit: ${prev}`].join('\n');
   document.body.append(dbg);
   window.__hero = heroScene;
 }
 
 /* ------------------------------------------------------------------ loop */
-let heroVisible = true;
-new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; }).observe(hero);
-function frame() {
+let heroVisible = true, lastCrumb = 0;
+// Exact check each frame: an observer counts a hero that merely touches the screen edge as visible.
+function heroOnScreen() { const r = hero.getBoundingClientRect(); return r.bottom > 1 && r.top < innerHeight - 1; }
+function frame(now) {
+  const was = heroVisible; heroVisible = heroOnScreen();
+  if (was && !heroVisible) releaseSeq();
   heroTarget = heroProgress();
   heroP += (heroTarget - heroP) * (reduce ? 1 : 0.14);
   if (Math.abs(heroTarget - heroP) < 0.0004) heroP = heroTarget;
   if (heroVisible) drawHero(heroP);
-  if (dbg) dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}`;
+  if (now - lastCrumb > 400) { lastCrumb = now; crumb(); }
+  if (dbg) dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}  decoded: ${seq ? seq.bmps.size : '-'}`;
   chrome();
   if (placesVisible) drawProfile();
   if (sScene && sVisible) {
