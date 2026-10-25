@@ -23,7 +23,7 @@
   <a class="collar__mark" href="#top" aria-label="Maps &amp; Memories, back to top">
     <img src="assets/wordmark-light.png" width="2012" height="291" alt="Maps &amp; Memories">
   </a>
-  <a class="collar__cta" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
+  <a class="collar__cta" href="#order" data-etsy>Order your map</a>
 </header>
 
 <nav class="route" aria-label="The Teahouse Loop, as this page">
@@ -65,7 +65,7 @@
       <div class="hero__close" data-sc-cue="0.79 1.6 0.1 0">
         <h2 class="sc-display hero__title hero__title--close">The Teahouse Loop, kept.</h2>
         <p class="hero__sub">14.05 km from Lake Louise to two teahouses and back, raised in red over the real terrain. Black frame, acrylic lid.</p>
-        <a class="btn" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
+        <a class="btn" href="#order" data-etsy>Order your map</a>
       </div>
     </div>
   </section>
@@ -95,32 +95,54 @@
   </section>
 
   <!-- 3 · Recognition: the stops on the loop, walked sideways. -->
-  <section id="places" class="places ground-light" data-sc-act="pan" data-sc-span="2.6">
+  <section id="places" class="places ground-light" data-sc-act="pan" data-sc-span="3.6">
     <div data-sc-stage class="places__stage">
-      <div class="places__rail" data-sc-pan="0.06">
+      <div class="places__rail" data-sc-pan="0">
         <div class="places__lead">
           <h2 class="sc-display places__h">Every stop is still there.</h2>
-          <p class="sc-body">The places you rested sit where they were, at the height they were. Three of them on the Teahouse Loop:</p>
+          <p class="sc-body">The places you rested sit where they were, at the height they were. Walk the Teahouse Loop sideways:</p>
           <p class="places__note">Photographs are illustrative. Distances and heights are from the trail's GPX.</p>
         </div>
-        <article class="stop">
-          <picture><source media="(max-width: 700px)" srcset="assets/wp1-m.webp"><img src="assets/wp1.webp" width="1536" height="1024" alt="Lake Louise at first light, the gravel lakeshore path leading toward the Victoria Glacier." loading="lazy"></picture>
-          <h3>Lake Louise Lakeshore</h3>
-          <p class="stop__nums">km 0 · 1,740 m</p>
-          <p>Start and finish. The flattest line on the map.</p>
-        </article>
-        <article class="stop">
-          <picture><source media="(max-width: 700px)" srcset="assets/wp2-m.webp"><img src="assets/wp2.webp" width="1536" height="1024" alt="Lake Agnes under cloud, the small tea house at the water's edge beneath the Big Beehive." loading="lazy"></picture>
-          <h3>Lake Agnes Tea House</h3>
-          <p class="stop__nums">km 3.6 · 2,124 m</p>
-          <p>The high point of the loop. The steepest red on the print.</p>
-        </article>
-        <article class="stop">
-          <picture><source media="(max-width: 700px)" srcset="assets/wp3-m.webp"><img src="assets/wp3.webp" width="1536" height="1024" alt="The Plain of Six Glaciers trail crossing grey moraine below hanging glaciers." loading="lazy"></picture>
-          <h3>Plain of Six Glaciers Tea House</h3>
-          <p class="stop__nums">km 8.2 · 2,058 m</p>
-          <p>Moraine and ice at the head of the valley, printed as scree.</p>
-        </article>
+
+        <div class="strip" data-strip>
+          <article class="stop" data-km="0">
+            <picture><source media="(max-width: 700px)" srcset="assets/wp1-m.webp"><img src="assets/wp1.webp" width="1536" height="1024" alt="Lake Louise at first light, the gravel lakeshore path leading toward the Victoria Glacier." loading="lazy"></picture>
+            <h3>Lake Louise Lakeshore</h3>
+            <p class="stop__nums">km 0 · 1,740 m</p>
+            <p>Start and finish. The flattest line on the map.</p>
+          </article>
+          <article class="stop" data-km="3.62">
+            <picture><source media="(max-width: 700px)" srcset="assets/wp2-m.webp"><img src="assets/wp2.webp" width="1536" height="1024" alt="Lake Agnes under cloud, the small tea house at the water's edge beneath the Big Beehive." loading="lazy"></picture>
+            <h3>Lake Agnes Tea House</h3>
+            <p class="stop__nums">km 3.6 · 2,124 m</p>
+            <p>The high point of the loop. The steepest red on the print.</p>
+          </article>
+          <article class="stop" data-km="8.15">
+            <picture><source media="(max-width: 700px)" srcset="assets/wp3-m.webp"><img src="assets/wp3.webp" width="1536" height="1024" alt="The Plain of Six Glaciers trail crossing grey moraine below hanging glaciers." loading="lazy"></picture>
+            <h3>Plain of Six Glaciers Tea House</h3>
+            <p class="stop__nums">km 8.2 · 2,058 m</p>
+            <p>Moraine and ice at the head of the valley, printed as scree.</p>
+          </article>
+          <div class="stop stop--end" data-km="14.05">
+            <h3>Back at the lake</h3>
+            <p class="stop__nums">km 14.05 · 1,740 m</p>
+            <p>555 m climbed, all of it on the map.</p>
+          </div>
+
+          <figure class="profile" aria-label="Elevation profile of the Teahouse Loop: from 1,740 m at Lake Louise up to 2,124 m at Lake Agnes, 2,058 m at the Plain of Six Glaciers, and back down over 14.05 km.">
+            <svg class="profile__svg" aria-hidden="true">
+              <defs><linearGradient id="profile-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d2bda2" stop-opacity="0.75"/><stop offset="1" stop-color="#d2bda2" stop-opacity="0.08"/></linearGradient></defs>
+              <g class="profile__grid"></g>
+              <path class="profile__area" fill="url(#profile-fill)"/>
+              <g class="profile__leaders"></g>
+              <path class="profile__ghost"/>
+              <path class="profile__live"/>
+              <g class="profile__marks"></g>
+              <circle class="profile__dot" r="6"/>
+            </svg>
+            <p class="profile__readout" aria-hidden="true"><span data-pkm>0.0</span> km · <span data-pele>1,740</span> m</p>
+          </figure>
+        </div>
       </div>
     </div>
   </section>
@@ -184,7 +206,7 @@
       <div class="plate">
         <div class="plate__head">
           <h2 class="sc-display plate__h">Ready to order?</h2>
-          <p class="sc-body">Our shop is on Etsy. Copy your trail and settings, then paste them into your order there.</p>
+          <p class="sc-body" data-etsy-lede>Our Etsy shop opens soon. Copy your trail and settings now, and paste them into your order when it does.</p>
         </div>
         <dl class="plate__spec">
           <div><dt>Trail</dt><dd data-order="name">The Teahouse Loop</dd></div>
@@ -193,8 +215,8 @@
           <div><dt>Size</dt><dd>250 mm square, framed</dd></div>
         </dl>
         <div class="plate__foot">
-          <a class="btn" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
-          <button type="button" class="btn btn--ghost" data-copy>Copy details</button>
+          <button type="button" class="btn" data-copy>Copy your trail details</button>
+          <p class="plate__soon" data-etsy-soon>Etsy shop opening soon</p>
           <p class="plate__msg" role="status" aria-live="polite"></p>
         </div>
       </div>

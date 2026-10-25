@@ -176,9 +176,12 @@ function chrome() {
   document.documentElement.style.setProperty('--route-p', cv.toFixed(4));
   if (show > 0) {
     railLayout();
-    const kmNow = cv * kmax, r = railAt(kmNow);
-    live.setAttribute('d', r.d);
-    head.style.transform = `translate(${r.end[0]}px, ${r.end[1]}px)`;
+    const kmNow = cv * kmax;
+    if (railPts.length) {   // the side rail has no size on phones, where only the bottom bar shows
+      const r = railAt(kmNow);
+      live.setAttribute('d', r.d);
+      head.style.transform = `translate(${r.end[0]}px, ${r.end[1]}px)`;
+    }
     stops.forEach(a => a.classList.toggle('is-passed', +a.dataset.km <= kmNow + 0.01));
   }
   const y = 40; document.body.classList.toggle('on-light', lightSecs.some(s => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom > y; }));
@@ -202,6 +205,72 @@ function collarState(atOrder) {
   else if (travel < -12) collar.classList.remove('is-hidden');
   collar.classList.add('is-backed');
 }
+
+/* --------------------------------------------- stops: the profile strip */
+// The loop's real elevation profile runs under the photos. Whatever km sits at
+// the centre of the screen is where the red line and its dot have climbed to.
+const strip = document.querySelector('[data-strip]');
+const pSvg = strip.querySelector('.profile__svg'), pFig = strip.querySelector('.profile');
+const pArea = pSvg.querySelector('.profile__area'), pGhost = pSvg.querySelector('.profile__ghost'), pLive = pSvg.querySelector('.profile__live');
+const pDot = pSvg.querySelector('.profile__dot'), pGrid = pSvg.querySelector('.profile__grid');
+const pLeaders = pSvg.querySelector('.profile__leaders'), pMarks = pSvg.querySelector('.profile__marks');
+const pRead = strip.querySelector('.profile__readout'), pKm = pRead.querySelector('[data-pkm]'), pEle = pRead.querySelector('[data-pele]');
+const stopEls = [...strip.querySelectorAll('.stop')];
+const P_LO = 1700, P_HI = 2150, svgNS = 'http://www.w3.org/2000/svg';
+stopEls.forEach(s => s.style.setProperty('--x', (+s.dataset.km / kmax).toFixed(4)));
+let pW = 0, pH = 0, pPts = [], pPad = { t: 14, b: 26 };
+const px = km => km / kmax * pW, py = e => pPad.t + (1 - (e - P_LO) / (P_HI - P_LO)) * (pH - pPad.t - pPad.b);
+const el = (tag, attrs) => { const n = document.createElementNS(svgNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+function profileLayout() {
+  const w = strip.clientWidth, h = pFig.clientHeight;
+  if (!w || !h || (w === pW && h === pH)) return;
+  pW = w; pH = h; pSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  pPts = RK.map((k, i) => [px(k), py(RE[i])]);
+  const line = 'M' + pPts.map(fmtPt).join('L');
+  pGhost.setAttribute('d', line);
+  pArea.setAttribute('d', line + `L${w} ${h - pPad.b}L0 ${h - pPad.b}Z`);
+  pGrid.replaceChildren();
+  for (const e of [1800, 1900, 2000, 2100]) {
+    pGrid.append(el('line', { x1: 0, x2: w, y1: py(e), y2: py(e) }));
+    pGrid.append(Object.assign(el('text', { x: 4, y: py(e) - 5 }), { textContent: e.toLocaleString('en-CA') + ' m' }));
+  }
+  pGrid.append(el('line', { class: 'axis', x1: 0, x2: w, y1: h - pPad.b, y2: h - pPad.b }));
+  for (let k = 0; k <= Math.floor(kmax); k++) {
+    pGrid.append(el('line', { class: 'axis', x1: px(k), x2: px(k), y1: h - pPad.b, y2: h - pPad.b + (k % 2 ? 4 : 7) }));
+    if (k % 2 === 0 && k > 0) pGrid.append(Object.assign(el('text', { x: px(k), y: h - 6, 'text-anchor': 'middle' }), { textContent: k + ' km' }));
+  }
+  const hang = parseFloat(getComputedStyle(strip.closest('.places')).getPropertyValue('--hang')) / 100 * innerHeight || 18;
+  pLeaders.replaceChildren(); pMarks.replaceChildren();
+  stopEls.forEach(s => {
+    const k = +s.dataset.km, x = px(k), y = py(eleAtKm(k));
+    pLeaders.append(el('line', { x1: x, x2: x, y1: -hang, y2: y }));
+    pMarks.append(el('circle', { cx: x, cy: y, r: 5, 'data-km': k }));
+  });
+}
+function profileAt(km) {
+  let i = 1; while (i < RK.length - 1 && RK[i] < km) i++;
+  const t = clamp((km - RK[i - 1]) / ((RK[i] - RK[i - 1]) || 1));
+  const end = [lerp(pPts[i - 1][0], pPts[i][0], t), lerp(pPts[i - 1][1], pPts[i][1], t)];
+  return { d: 'M' + pPts.slice(0, i).map(fmtPt).join('L') + 'L' + fmtPt(end), end };
+}
+let pLastKm = -1;
+function drawProfile() {
+  profileLayout();
+  if (!pPts.length) return;
+  const r = strip.getBoundingClientRect();
+  const km = clamp((innerWidth / 2 - r.left) / (pW || 1)) * kmax;
+  if (Math.abs(km - pLastKm) < 0.002) return; pLastKm = km;
+  const a = profileAt(km);
+  pLive.setAttribute('d', a.d);
+  pDot.setAttribute('cx', a.end[0]); pDot.setAttribute('cy', a.end[1]);
+  pRead.style.transform = `translate(calc(${a.end[0].toFixed(1)}px - 50%), ${(a.end[1] - 38).toFixed(1)}px)`;
+  pKm.textContent = km.toFixed(1); pEle.textContent = fmt(eleAtKm(km));
+  stopEls.forEach(s => s.classList.toggle('is-reached', +s.dataset.km <= km + 0.05));
+  pMarks.querySelectorAll('circle').forEach(c => c.classList.toggle('is-reached', +c.dataset.km <= km + 0.05));
+}
+let placesVisible = false;
+new IntersectionObserver(([e]) => { placesVisible = e.isIntersecting; }).observe(placesSec);
+addEventListener('resize', () => { pW = 0; pLastKm = -1; });
 
 /* ------------------------------------------------------- the GPX surface */
 const surface = document.querySelector('.surface');
@@ -294,9 +363,19 @@ frameBtn.addEventListener('click', () => {
 });
 
 /* ----------------------------------------------------------------- order */
-// The store is on Etsy. Every "Order on Etsy" link on the page reads this one URL.
-const ETSY_URL = 'https://www.etsy.com/';
-document.querySelectorAll('[data-etsy]').forEach(a => { a.href = ETSY_URL; });
+// The store will be on Etsy. Until ETSY_URL is set, the buttons lead to the order
+// plate and say the shop opens soon. Paste the shop link here and every button
+// becomes "Order on Etsy", opening the shop in a new tab.
+const ETSY_URL = '';
+if (ETSY_URL) {
+  const ext = '<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span>';
+  const toEtsy = a => { a.href = ETSY_URL; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = 'Order on Etsy' + ext; };
+  document.querySelectorAll('[data-etsy]').forEach(toEtsy);
+  const soon = document.querySelector('[data-etsy-soon]'), shop = document.createElement('a');
+  shop.className = 'btn'; toEtsy(shop); soon.replaceWith(shop);
+  const copyBtn = document.querySelector('[data-copy]'); copyBtn.classList.add('btn--ghost'); copyBtn.textContent = 'Copy details';
+  document.querySelector('[data-etsy-lede]').textContent = 'Our shop is on Etsy. Copy your trail and settings, then paste them into your order there.';
+}
 
 const plate = document.querySelector('.plate'), msg = plate.querySelector('.plate__msg');
 function syncOrder() {
@@ -310,11 +389,12 @@ plate.querySelector('[data-copy]').addEventListener('click', async e => {
   const b = e.currentTarget;
   try {
     await navigator.clipboard.writeText(details());
-    b.textContent = 'Copied'; msg.textContent = 'Paste these into your Etsy order so we build the right map.';
+    b.textContent = 'Copied'; msg.textContent = ETSY_URL ? 'Paste these into your Etsy order so we build the right map.' : 'Copied. Keep them for your order when the Etsy shop opens.';
   } catch (_) {
     msg.textContent = details().replace(/\n/g, ' · ');   // clipboard blocked: show it so it can be selected by hand
   }
-  setTimeout(() => { b.textContent = 'Copy details'; }, 2200);
+  const label = b.textContent === 'Copied' ? (ETSY_URL ? 'Copy details' : 'Copy your trail details') : b.textContent;
+  setTimeout(() => { b.textContent = label; }, 2200);
 });
 
 /* ------------------------------------------------------------------ loop */
@@ -326,6 +406,7 @@ function frame() {
   if (Math.abs(heroTarget - heroP) < 0.0004) heroP = heroTarget;
   if (heroVisible) drawHero(heroP);
   chrome();
+  if (placesVisible) drawProfile();
   if (sScene && sVisible) {
     if (controls) controls.update();
     else if (!reduce && surface.dataset.state === 'ready') { turn += 0.0015; sScene.view(20 + Math.sin(turn) * 25, 42, 1150, 0, -10, 0); }

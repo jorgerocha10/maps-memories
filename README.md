@@ -3,7 +3,7 @@
 Run it locally: `node <scroll-craft>/scripts/serve.mjs --root . --port 4500`, then open http://localhost:4500.
 
 ## What to set before going live
-- **Etsy shop link**: `js/app.js`, `const ETSY_URL`. Every "Order on Etsy" button on the page uses it (they open in a new tab).
+- **Etsy shop link**: `js/app.js`, `const ETSY_URL = ''`. Empty (now): buttons read "Order your map", lead to the closing plate, which says the Etsy shop opens soon. Paste the shop URL and every button becomes "Order on Etsy" and opens the shop in a new tab.
 - **Prices, lead times, other sizes**: not on the page because they were not provided. Only 250 mm is offered.
 
 ## Deploy these files only

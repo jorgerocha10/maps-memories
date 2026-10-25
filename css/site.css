@@ -150,19 +150,43 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
 .sw--frame  { background: #141619; box-shadow: inset 0 0 0 2px #2b2f33, inset 0 0 0 5px #141619, inset 0 0 0 6px #a76825; }
 
 /* ----------------------------------------------------------------- places */
-.places__stage { display: flex; align-items: center; }
-.places__rail { display: flex; align-items: flex-start; gap: clamp(1.5rem, 3vw, 3rem); padding: 0 var(--sc-gutter); padding-top: 8vh; }
-.places__lead { flex: 0 0 min(26rem, 80vw); align-self: center; }
+/* The loop walked sideways: the real elevation profile along the bottom,
+   each photo hung over its km by a leader line. */
+.places { --strip-w: 240vw; --card-w: clamp(17rem, min(25vw, 54vh), 30rem); --prof-h: 30vh; --prof-b: 7vh; --hang: 2.2vh; }
+.places__stage { display: flex; }
+.places__rail { display: flex; align-items: stretch; height: 100%; padding-left: var(--sc-gutter); }
+.places__lead { flex: 0 0 min(24rem, 78vw); align-self: center; margin-right: 7vw; }
 .places__h { font-size: var(--sc-t-3xl); font-weight: 450; }
 .places__lead .sc-body { margin-top: var(--sc-5); }
-.stop { flex: 0 0 clamp(18rem, 38vw, 34rem); }
-.stop img { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--sc-r-md);
-  box-shadow: 0 24px 50px -28px rgb(37 57 70 / 0.5); }
-.stop h3 { margin: var(--sc-5) 0 0; font-family: var(--sc-font-display); font-weight: 500; font-size: var(--sc-t-lg); letter-spacing: -0.01em; line-height: 1.2; }
-.stop__nums { margin: var(--sc-1) 0 0; font-variant-numeric: tabular-nums; color: var(--sc-accent); font-size: var(--sc-t-sm); font-weight: 500; }
-.stop p:last-child { margin: var(--sc-2) 0 0; color: var(--sc-ink-soft); font-size: var(--sc-t-sm); max-width: 40ch; }
 .places__note { margin: var(--sc-5) 0 0; font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
-.places__rail::after { content: ""; flex: 0 0 var(--sc-gutter); }
+.strip { position: relative; flex: 0 0 var(--strip-w); height: 100%; margin-right: 50vw; }
+
+.stop { position: absolute; left: calc(var(--x, 0) * 100%); bottom: calc(var(--prof-b) + var(--prof-h) + var(--hang)); width: var(--card-w); }
+.stop--end { transform: translateX(-100%); text-align: right; width: auto; white-space: nowrap; }
+.stop picture { display: block; position: relative; border-radius: var(--sc-r-md); overflow: hidden;
+  box-shadow: 0 24px 50px -28px rgb(37 57 70 / 0.5); }
+.stop img { width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; display: block; }
+.stop picture::after { content: ""; position: absolute; inset: 0; background: #ebe6df; opacity: 0.55; transition: opacity 420ms var(--sc-ease-out); }
+.stop.is-reached picture::after { opacity: 0; }
+.stop h3 { margin: var(--sc-4) 0 0; font-family: var(--sc-font-display); font-weight: 500; font-size: var(--sc-t-lg); letter-spacing: -0.01em; line-height: 1.2; }
+.stop__nums { margin: var(--sc-1) 0 0; font-variant-numeric: tabular-nums; color: var(--sc-ink-soft); font-size: var(--sc-t-sm); font-weight: 500; transition: color 300ms var(--sc-ease-out); }
+.stop.is-reached .stop__nums { color: var(--sc-accent); }
+.stop p:last-child { margin: var(--sc-1) 0 0; color: var(--sc-ink-soft); font-size: var(--sc-t-sm); max-width: 40ch; }
+.stop--end p:last-child { margin-left: auto; }
+
+.profile { position: absolute; left: 0; right: 0; bottom: var(--prof-b); height: var(--prof-h); margin: 0; }
+.profile__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.profile__grid line { stroke: rgb(37 57 70 / 0.12); stroke-width: 1; stroke-dasharray: 2 5; }
+.profile__grid line.axis { stroke: rgb(37 57 70 / 0.35); stroke-dasharray: none; }
+.profile__grid text { font: 500 11px var(--sc-font-text); fill: #4a5c69; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.profile__ghost { fill: none; stroke: #95a7b5; stroke-width: 1.5; stroke-linejoin: round; }
+.profile__live { fill: none; stroke: var(--sc-accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.profile__leaders line { stroke: #253946; stroke-opacity: 0.45; stroke-width: 1; stroke-dasharray: 3 4; }
+.profile__marks circle { fill: #ebe6df; stroke: #253946; stroke-width: 1.5; transition: fill 300ms var(--sc-ease-out), stroke 300ms var(--sc-ease-out); }
+.profile__marks circle.is-reached { fill: var(--sc-accent); stroke: var(--sc-accent); }
+.profile__dot { fill: var(--sc-accent); stroke: #ebe6df; stroke-width: 3; }
+.profile__readout { position: absolute; left: 0; top: 0; margin: 0; padding: 3px 8px; border-radius: var(--sc-r-sm); white-space: nowrap;
+  background: #253946; color: #f7f5f6; font-size: var(--sc-t-xs); font-variant-numeric: tabular-nums; will-change: transform; pointer-events: none; }
 
 /* ------------------------------------------------------------------ yours */
 .yours { padding-block: var(--sc-section); }
@@ -238,6 +262,7 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
 .field textarea::placeholder { color: rgb(169 184 196 / 0.75); }
 .plate__foot { grid-column: 2; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sc-3); }
 .plate__msg { flex-basis: 100%; min-height: 1.5em; }
+.plate__soon { margin: 0; font-size: var(--sc-t-sm); color: var(--sc-ink-soft); }
 .plate__msg { margin: 0; font-size: var(--sc-t-sm); color: var(--sc-ink-soft); max-width: 36ch; }
 .foot { position: relative; display: flex; align-items: center; justify-content: center; gap: var(--sc-3); font-size: var(--sc-t-xs); color: var(--sc-ink-soft); }
 .foot p { margin: 0; }
@@ -258,7 +283,9 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
   .inside__fig { position: static; }
   .inside__text { padding-top: 0; }
   .legend > div { grid-template-columns: 8rem 1fr; }
-  .places__rail { padding-top: 0; }
+  .places { --strip-w: 330vw; --card-w: 68vw; --prof-h: 24vh; --prof-b: 6vh; --hang: 1.8vh; }
+  .places__lead { margin-right: 10vw; }
+  .places__h { font-size: var(--sc-t-2xl); }
   .yours__intro { grid-template-columns: 1fr; gap: var(--sc-4); }
   .surface { grid-template-columns: 1fr; }
   .surface__view { min-height: 62vh; }
