@@ -6,8 +6,12 @@ import { clamp, smooth, lerp, CARVE, KEYS_DESK, camAt, heroState, SEQ, seqFile }
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const phone = () => innerWidth < 861;
-// Phones play the hero as pre-rendered frames: live WebGL there ran phones out of GPU memory.
-const SEQ_MODE = phone();
+// Phones play the hero as pre-rendered frames: live WebGL crashed phones (a Pixel 10's
+// PowerVR GPU among them). The device's screen size decides, not innerWidth, which some
+// Android Chrome builds report at desktop width in the first moment of loading.
+const SCREEN_MIN = Math.min(screen.width || Infinity, screen.height || Infinity);
+const SEQ_MODE = SCREEN_MIN <= 600 || matchMedia('(max-width: 860px)').matches || phone();
+const LOAD_W = innerWidth;   // recorded for ?debug=1
 const fmt = n => Math.round(n).toLocaleString('en-CA');
 
 ScrollCraft.mount(document.body);
@@ -318,7 +322,12 @@ const show = { forest: true, water: true, scree: true };
 
 function ensureSurface() {
   if (sScene || !GL) return sScene;
-  sScene = new MapScene(sCanvas, phone() ? { maxDpr: 1.25, shadowSize: 1024 } : { maxDpr: 1.75 });
+  // Phones get the lightest renderer that still reads as the print: 1x pixels, no shadows, no MSAA.
+  sScene = new MapScene(sCanvas, SEQ_MODE ? { maxDpr: 1, shadows: false, antialias: false } : { maxDpr: 1.75 });
+  sCanvas.addEventListener('webglcontextlost', e => {
+    e.preventDefault(); sScene = null;
+    status.textContent = 'This phone’s browser stopped the 3D preview. Your trail details above are still saved for your order.';
+  });
   sScene.view(20, 42, phone() ? 1150 : 640, 0, 10, 0);
   if (fine) {
     controls = new OrbitControls(sScene.camera, sCanvas);
@@ -457,6 +466,7 @@ if (dbg) {
     : `ENDED WITHOUT CLOSING at hero ${lastVisit.p}, frames decoded ${lastVisit.decoded}, js ${lastVisit.heapMB ?? '?'} MB${lastVisit.off ? ', off=' + lastVisit.off : ''}`;
   dbg.dataset.base = [`reduced motion: ${reduce}`, `hero: ${SEQ_MODE ? 'frames (phone)' : heroScene ? 'live 3D' : 'poster'}  webgl: ${GL ? 'yes' : 'NO'}`,
     `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}  ram: ${navigator.deviceMemory ?? '?'} GB`,
+    `width at load: ${LOAD_W}  screen: ${screen.width}x${screen.height}`,
     `off: ${[...OFF].join(',') || 'nothing'}`, `last visit: ${prev}`].join('\n');
   document.body.append(dbg);
   window.__hero = heroScene;

@@ -45,9 +45,9 @@ function makePlaque(title, line) {
 }
 
 export class MapScene {
-  constructor(canvas, { maxDpr = 1.75, shadows = true, shadowSize = 2048 } = {}) {
+  constructor(canvas, { maxDpr = 1.75, shadows = true, shadowSize = 2048, antialias = true } = {}) {
     this.canvas = canvas;
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias, powerPreference: antialias ? 'high-performance' : 'default' });
     r.setPixelRatio(Math.min(devicePixelRatio || 1, maxDpr));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
