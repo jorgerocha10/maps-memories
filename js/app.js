@@ -1,13 +1,13 @@
 import { MapScene, paintColours } from './terrain.js';
 import { parseGPX, buildMap } from './gpx.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
+import { clamp, smooth, lerp, CARVE, KEYS_DESK, camAt, heroState, SEQ, seqFile } from './hero-timeline.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const phone = () => innerWidth < 861;
-const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
-const lerp = (a, b, t) => a + (b - a) * t;
+// Phones play the hero as pre-rendered frames: live WebGL there ran phones out of GPU memory.
+const SEQ_MODE = phone();
 const fmt = n => Math.round(n).toLocaleString('en-CA');
 
 ScrollCraft.mount(document.body);
@@ -21,10 +21,11 @@ if (!GL) document.documentElement.classList.add('no-webgl');
 const ORDER = { name: 'The Teahouse Loop', elev: 1.5, path: 0.8, km: 14.05 };
 
 /* ------------------------------------------------------------------ data */
+// The raw terrain is only needed where the hero renders live; phones play frames.
 const [hBuf, mBuf, meta, profile] = await Promise.all([
-  fetch('data/teahouse-height.bin').then(r => r.arrayBuffer()),
-  fetch('data/teahouse-mat.bin').then(r => r.arrayBuffer()),
-  fetch('data/teahouse.json').then(r => r.json()),
+  SEQ_MODE ? null : fetch('data/teahouse-height.bin').then(r => r.arrayBuffer()),
+  SEQ_MODE ? null : fetch('data/teahouse-mat.bin').then(r => r.arrayBuffer()),
+  SEQ_MODE ? null : fetch('data/teahouse.json').then(r => r.json()),
   fetch('data/profile.json').then(r => r.json()),
   document.fonts.ready,
 ]);
@@ -37,8 +38,8 @@ function downsample(src, n0, n) {
   }
   return out;
 }
-const heroN = phone() ? 192 : 320;
-const HERO = {
+const heroN = 320;
+const HERO = SEQ_MODE ? null : {
   n: heroN, heights: downsample(new Float32Array(hBuf), meta.grid, heroN), baseScale: meta.elevScale,
   colours: paintColours(new Uint8Array(mBuf), meta.grid), trail: meta.trail.map(p => [p[0], p[1]]),
   title: 'The Teahouse Loop', line: 'Banff National Park  ·  14.05 km  ·  555 m climbed',
@@ -53,40 +54,48 @@ const layers = ['far', 'mid', 'near'].map(k => hero.querySelector('.hero__contou
 const readout = hero.querySelector('.hero__readout');
 const rPlace = readout.querySelector('.readout__place'), rKm = readout.querySelector('.readout__km'), rEle = readout.querySelector('.readout__ele');
 let heroScene = null;
-if (GL) {
+if (GL && !SEQ_MODE) {
   try {
-    // Phones get a lighter renderer: fewer pixels and a smaller shadow map keep GPU memory down.
-    heroScene = new MapScene(heroCanvas, phone() ? { maxDpr: 1.25, shadowSize: 1024 } : { maxDpr: 1.75 });
-    // If the phone reclaims the GPU anyway, fall back to the still poster instead of a blank stage.
+    heroScene = new MapScene(heroCanvas, { maxDpr: 1.75 });
+    // If the GPU is reclaimed anyway, fall back to the still poster instead of a blank stage.
     heroCanvas.addEventListener('webglcontextlost', e => { e.preventDefault(); document.documentElement.classList.add('no-webgl'); heroScene = null; });
     heroScene.setTerrain(HERO); heroScene.warm();
   } catch (e) { console.warn(e); document.documentElement.classList.add('no-webgl'); heroScene = null; }
 }
 
-// Camera keys: [p, theta, phi, dist, tx, ty, tz]
-const KEYS_DESK = [
-  [0.00, 0, 89.4, 860, 0, 0, 0],
-  [0.10, 0, 89.4, 860, 0, 0, 0],
-  [0.31, -22, 48, 610, 0, 12, 0],
-  [0.54, 18, 36, 520, 0, 22, 0],
-  [0.60, 32, 34, 540, 0, 22, 0],
-  [0.82, 24, 30, 960, -135, 36, 22],
-  [1.00, 30, 30, 960, -135, 36, 22],
-];
-const KEYS_PHONE = [
-  [0.00, 0, 89.4, 860, 0, 0, 0],
-  [0.10, 0, 89.4, 860, 0, 0, 0],
-  [0.31, -22, 52, 1300, 0, -60, 0],
-  [0.54, 18, 42, 1250, 0, -60, 0],
-  [0.60, 32, 40, 1280, 0, -60, 0],
-  [0.82, 26, 32, 1720, 10, -205, 25],
-  [1.00, 30, 32, 1720, 10, -205, 25],
-];
-function camAt(p) {
-  const K = phone() ? KEYS_PHONE : KEYS_DESK;
-  let i = 1; while (i < K.length - 1 && K[i][0] < p) i++;
-  const a = K[i - 1], b = K[i], t = smooth(a[0], b[0], p);
-  return a.map((v, k) => lerp(v, b[k], t)).slice(1);
+// Phone frame sequence: a plain 2D canvas, scrubbed by scroll. The first frame loads
+// straight away, the rest coarse-to-fine so an early scroll always has a near frame.
+const seq = SEQ_MODE ? { imgs: new Array(SEQ.count), ctx: heroCanvas.getContext('2d'), shown: -1, w: 0, h: 0 } : null;
+if (seq) {
+  const order = [0], seen = new Set(order);
+  for (const stride of [16, 8, 4, 2, 1]) for (let i = 0; i < SEQ.count; i += stride) if (!seen.has(i)) { seen.add(i); order.push(i); }
+  if (!seen.has(SEQ.count - 1)) order.splice(1, 0, SEQ.count - 1);
+  let next = 0;
+  const pump = () => {
+    if (next >= order.length) return;
+    const i = order[next++], im = new Image();
+    im.decoding = 'async';
+    im.onload = () => { seq.imgs[i] = im; seq.shown = -1; pump(); };
+    im.onerror = pump;
+    im.src = seqFile(i);
+  };
+  for (let k = 0; k < 4; k++) pump();   // four downloads in flight
+}
+function drawSeq(p) {
+  const c = heroCanvas, dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  if (w !== seq.w || h !== seq.h) { c.width = seq.w = w; c.height = seq.h = h; seq.shown = -1; }
+  const want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
+  let i = want;
+  for (let d = 0; d < SEQ.count && !seq.imgs[i]; d++) {   // nearest frame already loaded
+    if (seq.imgs[want - d]) { i = want - d; break; }
+    if (seq.imgs[want + d]) { i = want + d; break; }
+  }
+  const im = seq.imgs[i];
+  if (!im || i === seq.shown) return;
+  const s = Math.max(w / im.width, h / im.height);   // cover, centred
+  seq.ctx.drawImage(im, (w - im.width * s) / 2, (h - im.height * s) / 2, im.width * s, im.height * s);
+  seq.shown = i;
 }
 const fp = () => { const d = 860, f = 30 * Math.PI / 180; return 250 / (2 * d * Math.tan(f / 2)) * 100; };
 hero.style.setProperty('--fp', fp() + 'vh');
@@ -108,22 +117,17 @@ function drawHero(p) {
     if (!reduce && !phone()) el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
     el.style.opacity = String([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p)));
   });
-  if (!heroScene) return;
-  const carve = smooth(0.31, 0.54, p);
-  heroScene.set({
+  const st = heroState(p), carve = st.carve;
+  if (seq) drawSeq(p);
+  else if (heroScene) {
     // The story is driven by the visitor's own scroll, so it plays under reduced
     // motion too. What reduced motion removes is the camera flight and the
     // contours flying at the viewer: the camera holds one view, contours only fade.
-    light: smooth(0.06, 0.24, p),
-    rise: smooth(0.12, 0.30, p),
-    carve,
-    frame: smooth(0.58, 0.70, p),
-    lid: smooth(0.68, 0.80, p),
-    glow: 0.9 * smooth(0.78, 0.81, p) * (1 - smooth(0.81, 0.9, p)),
-  });
-  const c = reduce ? camAt(1) : camAt(p);
-  heroScene.view(c[0] + mxs * 4 * (1 - calm), c[1] - mys * 2 * (1 - calm), c[2], c[3], c[4], c[5]);
-  heroScene.render();
+    heroScene.set(st);
+    const c = reduce ? camAt(1, KEYS_DESK) : camAt(p, KEYS_DESK);
+    heroScene.view(c[0] + mxs * 4 * (1 - calm), c[1] - mys * 2 * (1 - calm), c[2], c[3], c[4], c[5]);
+    heroScene.render();
+  }
   // readout follows the carving head
   const ro = smooth(0.29, 0.32, p) * (1 - smooth(0.545, 0.575, p));
   readout.style.opacity = ro.toFixed(3);
@@ -166,7 +170,6 @@ function railAt(km) {   // the red line up to km, and the point where it ends
 }
 // The rail belongs to the map animation: it fills as the trail carves, and a
 // waypoint jumps to the scroll position where the carving reaches it.
-const CARVE = [0.31, 0.54];
 const pForCarve = f => CARVE[0] + (CARVE[1] - CARVE[0]) * (0.5 - Math.sin(Math.asin(1 - 2 * clamp(f)) / 3));
 stops.forEach(a => a.addEventListener('click', e => {
   e.preventDefault();
@@ -419,7 +422,7 @@ plate.querySelector('[data-copy]').addEventListener('click', async e => {
 const dbg = new URLSearchParams(location.search).get('debug') === '1' && Object.assign(document.createElement('pre'), { className: 'dbg' });
 if (dbg) {
   const gl = heroScene?.renderer.getContext(), ext = gl?.getExtension('WEBGL_debug_renderer_info');
-  dbg.dataset.base = [`reduced motion: ${reduce}`, `webgl: ${GL ? 'yes' : 'NO'}  scene: ${heroScene ? 'ok' : 'FAILED'}`,
+  dbg.dataset.base = [`reduced motion: ${reduce}`, `hero: ${SEQ_MODE ? 'frames (phone)' : heroScene ? 'live 3D' : 'poster'}  webgl: ${GL ? 'yes' : 'NO'}`,
     `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}`].join('\n');
   document.body.append(dbg);
   window.__hero = heroScene;

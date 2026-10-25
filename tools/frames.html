@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,300..700&family=Geist:wght@300..600&display=swap" rel="stylesheet">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+<style>html,body{margin:0;overflow:hidden}
+#stage{position:relative;width:780px;height:1690px;background:radial-gradient(120% 90% at 50% 40%, #13212e 0%, #0b131b 70%)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}</style></head>
+<body><div id="stage"><canvas id="c"></canvas></div><script type="module">
+// Renders the phone hero at any scroll position, for tools/frames.mjs to capture.
+import { MapScene, paintColours } from '/js/terrain.js';
+import { heroState, camAt, KEYS_PHONE } from '/js/hero-timeline.js';
+await document.fonts.ready;
+const [h, m, meta] = await Promise.all([fetch('/data/teahouse-height.bin').then(r => r.arrayBuffer()),
+  fetch('/data/teahouse-mat.bin').then(r => r.arrayBuffer()), fetch('/data/teahouse.json').then(r => r.json())]);
+const s = new MapScene(document.getElementById('c'), { maxDpr: 1 });
+s.setTerrain({ n: meta.grid, heights: new Float32Array(h), colours: paintColours(new Uint8Array(m), meta.grid),
+  trail: meta.trail.map(p => [p[0], p[1]]), baseScale: meta.elevScale,
+  title: 'The Teahouse Loop', line: 'Banff National Park  ·  14.05 km  ·  555 m climbed' });
+s.warm();
+window.renderAt = p => { s.set(heroState(p)); s.view(...camAt(p, KEYS_PHONE)); s.render(true); };
+setTimeout(() => { window.renderAt(0); document.title = 'ready'; }, 300);
+</script></body></html>

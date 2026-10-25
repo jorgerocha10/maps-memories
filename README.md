@@ -17,6 +17,9 @@ Test the deploy locally first: `node tools/prodserve.mjs` (serves only the deplo
 
 **If you edit the import map in `index.html`**, update its sha256 in the CSP `script-src` in `vercel.json`, or three.js will be blocked. If the GPX feature gains a new data source, add its host to `connect-src` (fetch) or `img-src` (image tiles).
 
+## Phone hero (pre-rendered frames)
+Phones (up to 860px wide) play the hero as 97 frames in `assets/hero-seq/` instead of live WebGL, which ran phones out of GPU memory. The timing and camera path live in `js/hero-timeline.js`, shared by the live 3D and the frame renderer. **If you change the hero animation or the model, re-render the frames:** start the dev server on :4500, then `node tools/frames.mjs` (about a minute).
+
 ## Where things come from
 - `data/teahouse-*.bin`, `data/teahouse.json`: exported from `Treehouse loop.blend` (TrailPrint3D map, 512x512 heights + material map + trail).
 - `data/profile.json`, `assets/contour-*.svg`: built from the GPX and the heightmap (`tools/wpstats.mjs`, `tools/contours.mjs`).
