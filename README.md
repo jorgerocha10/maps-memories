@@ -3,7 +3,7 @@
 Run it locally: `node <scroll-craft>/scripts/serve.mjs --root . --port 4500`, then open http://localhost:4500.
 
 ## What to set before going live
-- **Order email**: `js/app.js`, `const ORDER_EMAIL = ''`. Empty means the order is saved as a text file for the visitor and the page says ordering is not connected. Put the shop inbox there to open a pre-filled email instead, or swap in a real form backend.
+- **Etsy shop link**: `js/app.js`, `const ETSY_URL`. Every "Order on Etsy" button on the page uses it (they open in a new tab).
 - **Prices, lead times, other sizes**: not on the page because they were not provided. Only 250 mm is offered.
 
 ## Deploy these files only

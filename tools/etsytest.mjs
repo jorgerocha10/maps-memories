@@ -1,0 +1,16 @@
+import {chromium} from 'playwright-core';
+const [W,H,pre]=process.argv.slice(2);
+const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const ctx=await b.newContext({viewport:{width:+W,height:+H}});await ctx.grantPermissions(['clipboard-read','clipboard-write'],{origin:'http://localhost:4500'});
+const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('http://localhost:4500/',{waitUntil:'networkidle'});await p.waitForTimeout(800);
+console.log('etsy links:',await p.evaluate(()=>[...document.querySelectorAll('[data-etsy]')].map(a=>`${a.textContent.trim()} -> ${a.href} target=${a.target}`).join(' | ')));
+await p.evaluate(()=>document.querySelector('.surface').scrollIntoView({block:'center'}));await p.click('[data-sample="assets/sample-banff-half.gpx"]');
+await p.waitForFunction(()=>document.querySelector('.surface').dataset.state==='ready',null,{timeout:90000});
+await p.evaluate(()=>{document.querySelector('[name=elev]').value='2.2';document.querySelector('[name=elev]').dispatchEvent(new Event('input',{bubbles:true}));});
+await p.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));await p.waitForTimeout(1500);
+await p.click('[data-copy]');await p.waitForTimeout(400);
+console.log('clipboard:',JSON.stringify(await p.evaluate(()=>navigator.clipboard.readText())));
+console.log('msg:',await p.textContent('.plate__msg'));
+await p.screenshot({path:pre+'-order.png'});
+console.log(errs.join('\n')||'no errors');await b.close();

@@ -279,28 +279,27 @@ frameBtn.addEventListener('click', () => {
 });
 
 /* ----------------------------------------------------------------- order */
+// The store is on Etsy. Every "Order on Etsy" link on the page reads this one URL.
+const ETSY_URL = 'https://www.etsy.com/';
+document.querySelectorAll('[data-etsy]').forEach(a => { a.href = ETSY_URL; });
+
 const plate = document.querySelector('.plate'), msg = plate.querySelector('.plate__msg');
-const ORDER_EMAIL = '';   // set to the shop's inbox to send orders by email
 function syncOrder() {
   plate.querySelector('[data-order="name"]').textContent = ORDER.name;
   plate.querySelector('[data-order="elev"]').textContent = ORDER.elev.toFixed(1) + '×';
   plate.querySelector('[data-order="path"]').textContent = ORDER.path.toFixed(1) + '×';
 }
-plate.addEventListener('submit', e => {
-  e.preventDefault();
-  const f = plate.elements; let bad = null;
-  for (const k of ['name', 'email']) { const ok = f[k].value.trim() && f[k].checkValidity(); f[k].setAttribute('aria-invalid', String(!ok)); if (!ok && !bad) bad = f[k]; }
-  if (bad) { msg.textContent = bad.name === 'email' ? 'Add an email we can reply to.' : 'Add your name.'; bad.focus(); return; }
-  const body = [`Trail: ${ORDER.name}`, `Elevation scale: ${ORDER.elev.toFixed(1)}x`, `Path scale: ${ORDER.path.toFixed(1)}x`, 'Size: 250 mm square, framed',
-    `Name: ${f.name.value.trim()}`, `Email: ${f.email.value.trim()}`, `Note: ${f.note.value.trim() || '-'}`].join('\n');
-  if (ORDER_EMAIL) {
-    location.href = `mailto:${ORDER_EMAIL}?subject=${encodeURIComponent('Map order: ' + ORDER.name)}&body=${encodeURIComponent(body)}`;
-    msg.textContent = 'Your email app should open with the order filled in. Send it and we will reply.';
-  } else {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
-    a.download = 'maps-and-memories-order.txt'; a.click(); URL.revokeObjectURL(a.href);
-    msg.textContent = 'Online ordering is not connected yet. We saved your order as a file so nothing is lost.';
+// The visitor's trail travels to Etsy as text they paste into the personalisation box.
+const details = () => [`Trail: ${ORDER.name}`, `Elevation scale: ${ORDER.elev.toFixed(1)}x`, `Path scale: ${ORDER.path.toFixed(1)}x`, 'Size: 250 mm square, framed'].join('\n');
+plate.querySelector('[data-copy]').addEventListener('click', async e => {
+  const b = e.currentTarget;
+  try {
+    await navigator.clipboard.writeText(details());
+    b.textContent = 'Copied'; msg.textContent = 'Paste these into your Etsy order so we build the right map.';
+  } catch (_) {
+    msg.textContent = details().replace(/\n/g, ' · ');   // clipboard blocked: show it so it can be selected by hand
   }
+  setTimeout(() => { b.textContent = 'Copy details'; }, 2200);
 });
 
 /* ------------------------------------------------------------------ loop */

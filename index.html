@@ -23,7 +23,7 @@
   <a class="collar__mark" href="#top" aria-label="Maps &amp; Memories, back to top">
     <img src="assets/wordmark-light.png" width="2012" height="291" alt="Maps &amp; Memories">
   </a>
-  <a class="collar__cta" href="#order">Order your map</a>
+  <a class="collar__cta" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
 </header>
 
 <nav class="route" aria-label="The Teahouse Loop, as this page">
@@ -65,7 +65,7 @@
       <div class="hero__close" data-sc-cue="0.79 1.6 0.1 0">
         <h2 class="sc-display hero__title hero__title--close">The Teahouse Loop, kept.</h2>
         <p class="hero__sub">14.05 km from Lake Louise to two teahouses and back, raised in red over the real terrain. Black frame, acrylic lid.</p>
-        <a class="btn" href="#order">Order your map</a>
+        <a class="btn" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
       </div>
     </div>
   </section>
@@ -181,10 +181,10 @@
   <section id="order" class="order" data-sc-act="pin" data-sc-span="1.15">
     <div data-sc-stage class="order__stage">
       <div class="contour-bg" aria-hidden="true"><img src="assets/contour-all.svg" alt=""></div>
-      <form class="plate" method="post" action="#order" novalidate>
+      <div class="plate">
         <div class="plate__head">
-          <h2 class="sc-display plate__h">Order your map.</h2>
-          <p class="sc-body">Tell us where to reach you. Your trail and settings come with the order.</p>
+          <h2 class="sc-display plate__h">Ready to order?</h2>
+          <p class="sc-body">Our shop is on Etsy. Copy your trail and settings, then paste them into your order there.</p>
         </div>
         <dl class="plate__spec">
           <div><dt>Trail</dt><dd data-order="name">The Teahouse Loop</dd></div>
@@ -192,16 +192,12 @@
           <div><dt>Path</dt><dd data-order="path">0.8×</dd></div>
           <div><dt>Size</dt><dd>250 mm square, framed</dd></div>
         </dl>
-        <div class="plate__fields">
-          <label class="field"><span>Your name</span><input name="name" autocomplete="name" required></label>
-          <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required></label>
-          <label class="field field--wide"><span>Anything we should know <small>(optional)</small></span><textarea name="note" rows="2" placeholder="Who it is for, the day you hiked it, a link to your GPX"></textarea></label>
-        </div>
         <div class="plate__foot">
-          <button class="btn" type="submit">Order your map</button>
+          <a class="btn" href="https://www.etsy.com/" data-etsy target="_blank" rel="noopener">Order on Etsy<svg class="btn__ext" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr"> (opens in a new tab)</span></a>
+          <button type="button" class="btn btn--ghost" data-copy>Copy details</button>
           <p class="plate__msg" role="status" aria-live="polite"></p>
         </div>
-      </form>
+      </div>
       <footer class="foot">
         <img src="assets/mark.png" width="626" height="626" alt="" class="foot__mark">
         <p>Maps &amp; Memories · 3D-printed trail maps</p>
