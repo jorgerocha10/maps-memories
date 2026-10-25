@@ -33,8 +33,11 @@ function makePlaque(title, line) {
   const g = c.getContext('2d');
   g.fillStyle = '#16191c'; g.fillRect(0, 0, c.width, c.height);
   g.fillStyle = '#d2bda2';
-  g.font = '500 86px Archivo, system-ui, sans-serif'; g.textBaseline = 'middle';
-  g.fillText(title.toUpperCase().slice(0, 34), 40, 92);
+  g.textBaseline = 'middle';
+  const name = title.toUpperCase().slice(0, 60);
+  let size = 86;   // shrink long trail names to fit the plaque instead of cutting them off
+  do { g.font = `500 ${size}px Archivo, system-ui, sans-serif`; } while (g.measureText(name).width > c.width - 80 && (size -= 4) > 40);
+  g.fillText(name, 40, 92, c.width - 80);
   g.fillStyle = '#95a7b5'; g.font = '400 58px Geist, system-ui, sans-serif';
   g.fillText(line, 40, 190);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
@@ -99,8 +102,10 @@ export class MapScene {
 
     // Trail head: the light that carves.
     this.head = new THREE.Mesh(new THREE.SphereGeometry(2.6, 20, 16), new THREE.MeshBasicMaterial({ color: '#ff5040', toneMapped: false }));
+    // The light lives in the scene permanently and is dimmed to 0 when idle. Hiding it
+    // instead would change the light count and recompile every material mid-scroll.
     this.headLight = new THREE.PointLight('#ff3b2a', 0, 60, 2);
-    this.head.add(this.headLight); this.model.add(this.head);
+    this.model.add(this.head, this.headLight);
   }
 
   setLidHeight(h) {
@@ -115,6 +120,8 @@ export class MapScene {
   /** heights: Float32Array n*n in mm (row 0 = north), baseScale: the elevation scale they were made at. */
   setTerrain({ n, heights, colours, trail, baseScale = 1, title = '', line = '' }) {
     this.n = n; this.heights = heights; this.baseScale = baseScale; this.trailSrc = trail;
+    this.hMax = heights.reduce((m, v) => v > m ? v : m, 0);
+    this._trailKey = this._lidKey = '';
     if (this.terrain) { this.model.remove(this.terrain, this.walls); this.terrain.geometry.dispose(); this.walls.geometry.dispose(); }
     const geo = new THREE.PlaneGeometry(SIZE, SIZE, n - 1, n - 1); geo.rotateX(-Math.PI / 2);
     this.colourTex = new THREE.CanvasTexture(colours); this.colourTex.colorSpace = THREE.SRGBColorSpace; this.colourTex.anisotropy = 8;
@@ -134,19 +141,27 @@ export class MapScene {
 
   setColours(canvas) { this.colourTex.image = canvas; this.colourTex.needsUpdate = true; this._dirty = true; }
 
-  heightAt(x, y) {   // blender-style mm coords: x east, y north, both -125..125
+  heightAt(x, y, full = false) {   // blender-style mm coords: x east, y north, both -125..125
     const n = this.n, h = this.heights;
     const fx = Math.min(Math.max((x + SIZE / 2) / SIZE * (n - 1), 0), n - 1.001);
     const fy = Math.min(Math.max((SIZE / 2 - y) / SIZE * (n - 1), 0), n - 1.001);
     const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
     const a = h[j * n + i], b = h[j * n + i + 1], c = h[(j + 1) * n + i], d = h[(j + 1) * n + i + 1];
-    return this._z(a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v);
+    const raw = a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+    return full ? this._zFull(raw) : this._z(raw);
   }
   _z(h) { const { rise, elevMul } = this.state; return 2 + (h - 2) * elevMul * rise; }
+  _zFull(h) { return 2 + (h - 2) * this.state.elevMul; }   // the terrain once it has finished rising
 
   _updateGeometry() {
     const { n, heights } = this; const s = this.state;
-    const key = s.rise.toFixed(4) + '|' + s.elevMul.toFixed(3) + '|' + s.pathScale.toFixed(3);
+    // Trail and lid only ever show on the finished terrain, so they are built once at full
+    // height and rebuilt only when the sliders change, never per frame while it rises.
+    const trailKey = s.elevMul.toFixed(3) + '|' + s.pathScale.toFixed(3);
+    if (trailKey !== this._trailKey) { this._trailKey = trailKey; this._buildTrail(); }
+    const lidKey = s.elevMul.toFixed(3);
+    if (lidKey !== this._lidKey) { this._lidKey = lidKey; this.setLidHeight(Math.max(this._zFull(this.hMax) + 10, 24)); }
+    const key = s.rise.toFixed(4) + '|' + s.elevMul.toFixed(3);
     if (key === this._geoKey) return; this._geoKey = key;
     const pos = this.terrain.geometry.attributes.position; let maxY = 0;
     for (let i = 0; i < n * n; i++) { const y = this._z(heights[i]); pos.setY(i, y); if (y > maxY) maxY = y; }
@@ -161,15 +176,13 @@ export class MapScene {
     ring.forEach((vi, k) => { const x = pos.getX(vi), y = pos.getY(vi), z = pos.getZ(vi);
       wp.setXYZ(k * 2, x, y, z); wp.setXYZ(k * 2 + 1, x, 0, z); });
     wp.needsUpdate = true; this.walls.geometry.computeVertexNormals(); this.walls.geometry.computeBoundingSphere();
-    this._buildTrail();
-    if (Math.abs((this.lidH || 0) - (maxY + 10)) > 2) this.setLidHeight(Math.max(maxY + 10, 24));
   }
 
   _buildTrail() {
     if (this.trail) { this.model.remove(this.trail); this.trail.geometry.dispose(); }
     const src = this.trailSrc; if (!src || src.length < 2) return;
     const lift = 1.6 * this.state.pathScale + 0.5;
-    const pts = src.map(([x, y]) => new THREE.Vector3(x, this.heightAt(x, y) + lift, -y));
+    const pts = src.map(([x, y]) => new THREE.Vector3(x, this.heightAt(x, y, true) + lift, -y));
     this.curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.3);
     const seg = this.tubeSeg = Math.min(pts.length * 3, 3000);
     const g = new THREE.TubeGeometry(this.curve, seg, 2 * this.state.pathScale, 8, false);
@@ -183,11 +196,23 @@ export class MapScene {
     this.trail.geometry.setDrawRange(0, segs * 8 * 6);
     const on = c > 0.001 && c < 0.999;
     this.head.visible = on || (c > 0.001 && this.state.headAlways);
-    if (this.head.visible) this.head.position.copy(this.curve.getPointAt(Math.min(c, 1)));
+    if (this.head.visible) { this.head.position.copy(this.curve.getPointAt(Math.min(c, 1))); this.headLight.position.copy(this.head.position); }
     this.headLight.intensity = on ? 900 : 0;
   }
 
   set(p) { Object.assign(this.state, p); this._dirty = true; }
+
+  // Compile every shader now, while the page loads, instead of the first time the trail,
+  // frame or lid appears mid-scroll (a stall phones handle badly). compile() only visits
+  // visible objects, so everything is shown for the call and restored after.
+  warm() {
+    if (!this.terrain) return;
+    this._updateGeometry();
+    const objs = [this.frameGroup, this.lid, this.head, this.trail].filter(Boolean), was = objs.map(o => o.visible);
+    objs.forEach(o => { o.visible = true; });
+    this.renderer.compile(this.scene, this.camera);
+    objs.forEach((o, i) => { o.visible = was[i]; });
+  }
 
   view(theta, phi, dist, tx = 0, ty = 0, tz = 0) {   // degrees: theta around Y from south, phi above horizon
     const t = THREE.MathUtils.degToRad(theta), f = THREE.MathUtils.degToRad(phi);

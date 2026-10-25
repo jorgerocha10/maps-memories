@@ -37,7 +37,7 @@ function downsample(src, n0, n) {
   }
   return out;
 }
-const heroN = phone() ? 224 : 320;
+const heroN = phone() ? 192 : 320;
 const HERO = {
   n: heroN, heights: downsample(new Float32Array(hBuf), meta.grid, heroN), baseScale: meta.elevScale,
   colours: paintColours(new Uint8Array(mBuf), meta.grid), trail: meta.trail.map(p => [p[0], p[1]]),
@@ -59,7 +59,7 @@ if (GL) {
     heroScene = new MapScene(heroCanvas, phone() ? { maxDpr: 1.25, shadowSize: 1024 } : { maxDpr: 1.75 });
     // If the phone reclaims the GPU anyway, fall back to the still poster instead of a blank stage.
     heroCanvas.addEventListener('webglcontextlost', e => { e.preventDefault(); document.documentElement.classList.add('no-webgl'); heroScene = null; });
-    heroScene.setTerrain(HERO);
+    heroScene.setTerrain(HERO); heroScene.warm();
   } catch (e) { console.warn(e); document.documentElement.classList.add('no-webgl'); heroScene = null; }
 }
 
@@ -115,7 +115,7 @@ function drawHero(p) {
     // motion too. What reduced motion removes is the camera flight and the
     // contours flying at the viewer: the camera holds one view, contours only fade.
     light: smooth(0.06, 0.24, p),
-    rise: smooth(0.12, 0.32, p),
+    rise: smooth(0.12, 0.30, p),
     carve,
     frame: smooth(0.58, 0.70, p),
     lid: smooth(0.68, 0.80, p),
