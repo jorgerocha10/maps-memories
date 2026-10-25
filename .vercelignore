@@ -1,0 +1,10 @@
+# Only the site is deployed: index.html, scrollcraft.*, css/, js/, vendor/, assets/, data/
+tools/
+lab/
+out/
+node_modules/
+*.md
+.env
+.env.*
+.vercelignore
+.gitignore
