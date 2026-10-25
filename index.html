@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maps &amp; Memories · Your trail, framed</title>
+<meta name="description" content="3D-printed terrain maps of the trails you hiked. Your route raised in red over the real mountain, in a black frame under an acrylic lid.">
+<link rel="icon" href="assets/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,300..700&family=Geist:wght@300..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scrollcraft.css">
+<link rel="stylesheet" href="css/site.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+
+<a class="skip" href="#yours">Skip to drop your GPX</a>
+<div class="sc-grain" aria-hidden="true"></div>
+
+<!-- The collar: wordmark, one action, and the trail itself as the page's position. -->
+<header class="collar">
+  <a class="collar__mark" href="#top" aria-label="Maps &amp; Memories, back to top">
+    <img src="assets/wordmark-light.png" width="2012" height="291" alt="Maps &amp; Memories">
+  </a>
+  <a class="collar__cta" href="#order">Order your map</a>
+</header>
+
+<nav class="route" aria-label="The Teahouse Loop, as this page">
+  <svg class="route__svg" viewBox="0 0 60 1000" preserveAspectRatio="none" aria-hidden="true">
+    <path class="route__ghost" d=""/>
+    <path class="route__live" d=""/>
+  </svg>
+  <span class="route__head" aria-hidden="true"></span>
+  <ol class="route__stops">
+    <li><a href="#top" data-km="0"><span>Lake Louise</span><em>1,740 m</em></a></li>
+    <li><a href="#inside" data-km="3.62"><span>Lake Agnes Tea House</span><em>2,124 m</em></a></li>
+    <li><a href="#places" data-km="8.15"><span>Plain of Six Glaciers</span><em>2,058 m</em></a></li>
+    <li><a href="#order" data-km="12.13"><span>Back at the lake</span><em>1,740 m</em></a></li>
+  </ol>
+</nav>
+
+<main>
+
+  <!-- 1 · Mystery, then the object. One pinned stage; the map rises, the trail carves,
+       the frame and lid close over it. -->
+  <section id="top" class="hero" data-sc-act="pin" data-sc-span="5.6">
+    <div data-sc-stage class="hero__stage">
+      <picture><source media="(max-width: 860px)" srcset="assets/poster-mobile.webp"><img class="hero__poster" src="assets/poster-desktop.webp" alt="The Teahouse Loop map in its black frame under an acrylic lid, the trail raised in red." width="1920" height="1080"></picture>
+      <div class="hero__contours hero__contours--far" aria-hidden="true"><img src="assets/contour-far.svg" alt=""></div>
+      <canvas class="hero__gl" aria-hidden="true"></canvas>
+      <div class="hero__contours hero__contours--mid" aria-hidden="true"><img src="assets/contour-mid.svg" alt=""></div>
+      <div class="hero__contours hero__contours--near" aria-hidden="true"><img src="assets/contour-near.svg" alt=""></div>
+
+      <div class="hero__open" data-sc-cue="0 0.17 0 0.06">
+        <h1 class="sc-display hero__title">Some trails stay with you.</h1>
+        <p class="hero__sub">We print the one you walked, mountain and all.</p>
+      </div>
+
+      <div class="hero__readout" aria-hidden="true">
+        <p class="readout__place">Lake Louise Lakeshore</p>
+        <p class="readout__nums"><span class="readout__km">0.0</span> km <span class="readout__dot">·</span> <span class="readout__ele">1,740</span> m</p>
+      </div>
+
+      <div class="hero__close" data-sc-cue="0.79 1.6 0.1 0">
+        <h2 class="sc-display hero__title hero__title--close">The Teahouse Loop, kept.</h2>
+        <p class="hero__sub">14.05 km from Lake Louise to two teahouses and back, raised in red over the real terrain. Black frame, acrylic lid.</p>
+        <a class="btn" href="#order">Order your map</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Intimacy: the piece up close, said like a map legend. -->
+  <section id="inside" class="inside ground-light" data-sc-act="flow">
+    <div class="sc-wrap inside__grid">
+      <figure class="inside__fig" data-sc-reveal="up" data-sc-reveal-at="0.12 0.5">
+        <img src="assets/detail-top.webp" width="1600" height="1200" alt="The Teahouse Loop map from above: Lake Louise and Lake Agnes in blue, forest in dark green, scree in pale grey, the trail in red.">
+      </figure>
+      <div class="inside__text">
+        <h2 class="sc-display inside__h">What's in the frame.</h2>
+        <p class="sc-body">Every map is built from the GPX of your hike and printed at 250 mm square. This one covers 8.8 km of the Rockies around Lake Louise.</p>
+        <dl class="legend" data-sc-in data-sc-stagger="60">
+          <div><dt><i class="sw sw--trail"></i>Your route</dt><dd>The track you recorded, raised and printed in red.</dd></div>
+          <div><dt><i class="sw sw--relief"></i>Terrain</dt><dd>30 m elevation data, raised 1.5 times so the climb reads under your thumb.</dd></div>
+          <div><dt><i class="sw sw--forest"></i>Forest</dt><dd>From OpenStreetMap, printed deep green.</dd></div>
+          <div><dt><i class="sw sw--water"></i>Water</dt><dd>Lakes and rivers, printed blue.</dd></div>
+          <div><dt><i class="sw sw--scree"></i>Scree and rock</dt><dd>Printed pale grey, the way it looks from the trail.</dd></div>
+          <div><dt><i class="sw sw--frame"></i>Frame</dt><dd>A black base, the Maps &amp; Memories badge, and an acrylic lid over the whole map.</dd></div>
+        </dl>
+        <figure class="inside__plate" data-sc-reveal="left" data-sc-reveal-at="0.3 0.72">
+          <img src="assets/detail-plaque.webp" width="1600" height="900" alt="Close view of the black frame's front edge: the copper Maps &amp; Memories badge beside the trail's name.">
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Recognition: the stops on the loop, walked sideways. -->
+  <section id="places" class="places ground-light" data-sc-act="pan" data-sc-span="2.6">
+    <div data-sc-stage class="places__stage">
+      <div class="places__rail" data-sc-pan="0.06">
+        <div class="places__lead">
+          <h2 class="sc-display places__h">Every stop is still there.</h2>
+          <p class="sc-body">The places you rested sit where they were, at the height they were. Three of them on the Teahouse Loop:</p>
+          <p class="places__note">Photographs are illustrative. Distances and heights are from the trail's GPX.</p>
+        </div>
+        <article class="stop">
+          <picture><source media="(max-width: 700px)" srcset="assets/wp1-m.webp"><img src="assets/wp1.webp" width="1536" height="1024" alt="Lake Louise at first light, the gravel lakeshore path leading toward the Victoria Glacier." loading="lazy"></picture>
+          <h3>Lake Louise Lakeshore</h3>
+          <p class="stop__nums">km 0 · 1,740 m</p>
+          <p>Start and finish. The flattest line on the map.</p>
+        </article>
+        <article class="stop">
+          <picture><source media="(max-width: 700px)" srcset="assets/wp2-m.webp"><img src="assets/wp2.webp" width="1536" height="1024" alt="Lake Agnes under cloud, the small tea house at the water's edge beneath the Big Beehive." loading="lazy"></picture>
+          <h3>Lake Agnes Tea House</h3>
+          <p class="stop__nums">km 3.6 · 2,124 m</p>
+          <p>The high point of the loop. The steepest red on the print.</p>
+        </article>
+        <article class="stop">
+          <picture><source media="(max-width: 700px)" srcset="assets/wp3-m.webp"><img src="assets/wp3.webp" width="1536" height="1024" alt="The Plain of Six Glaciers trail crossing grey moraine below hanging glaciers." loading="lazy"></picture>
+          <h3>Plain of Six Glaciers Tea House</h3>
+          <p class="stop__nums">km 8.2 · 2,058 m</p>
+          <p>Moraine and ice at the head of the valley, printed as scree.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Wonder: the visitor's own trail, built live. -->
+  <section id="yours" class="yours" data-sc-act="flow">
+    <div class="sc-wrap yours__grid">
+      <div class="yours__intro">
+        <h2 class="sc-display yours__h">Now drop in yours.</h2>
+        <p class="sc-body">Drag the GPX from Strava, komoot, Garmin or AllTrails onto the map. We fetch the real terrain and land cover, and your mountain rises.</p>
+      </div>
+
+      <div class="surface" data-state="empty">
+        <div class="surface__view">
+          <canvas class="surface__gl" aria-label="3D preview of your map"></canvas>
+          <label class="drop" for="gpx-file">
+            <input id="gpx-file" type="file" accept=".gpx,application/gpx+xml" class="drop__input">
+            <span class="drop__title">Drop a .gpx file</span>
+            <span class="drop__or">or click to choose one</span>
+          </label>
+          <p class="surface__status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="surface__panel">
+          <div class="samples">
+            <span class="samples__label">No file to hand? Try one of ours:</span>
+            <button type="button" class="chip" data-sample="assets/teahouse-loop.gpx">Teahouse Loop</button>
+            <button type="button" class="chip" data-sample="assets/sample-banff-half.gpx">Banff Half Marathon</button>
+            <button type="button" class="chip" data-sample="assets/sample-calgary-10k.gpx">Calgary 10K</button>
+          </div>
+
+          <dl class="surface__stats" aria-live="polite">
+            <div><dt>Trail</dt><dd data-stat="name">None yet</dd></div>
+            <div><dt>Distance</dt><dd data-stat="km">–</dd></div>
+            <div><dt>High point</dt><dd data-stat="high">–</dd></div>
+            <div><dt>Map covers</dt><dd data-stat="extent">–</dd></div>
+          </dl>
+
+          <fieldset class="tune" disabled>
+            <legend class="sr">Tune the print</legend>
+            <label class="slider"><span>Elevation scale <output data-out="elev">1.5×</output></span>
+              <input type="range" name="elev" min="0.5" max="3" step="0.1" value="1.5"></label>
+            <label class="slider"><span>Path scale <output data-out="path">0.8×</output></span>
+              <input type="range" name="path" min="0.4" max="2" step="0.1" value="0.8"></label>
+            <div class="toggles">
+              <label class="tog"><input type="checkbox" name="forest" checked><i class="sw sw--forest"></i>Forest</label>
+              <label class="tog"><input type="checkbox" name="water" checked><i class="sw sw--water"></i>Water</label>
+              <label class="tog"><input type="checkbox" name="scree" checked><i class="sw sw--scree"></i>Scree</label>
+            </div>
+            <button type="button" class="btn btn--ghost" data-frame aria-pressed="false">Put it in the frame</button>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · Resolve: the order plate, carrying their trail. Last element on the page. -->
+  <section id="order" class="order" data-sc-act="pin" data-sc-span="1.15">
+    <div data-sc-stage class="order__stage">
+      <div class="contour-bg" aria-hidden="true"><img src="assets/contour-all.svg" alt=""></div>
+      <form class="plate" method="post" action="#order" novalidate>
+        <div class="plate__head">
+          <h2 class="sc-display plate__h">Order your map.</h2>
+          <p class="sc-body">Tell us where to reach you. Your trail and settings come with the order.</p>
+        </div>
+        <dl class="plate__spec">
+          <div><dt>Trail</dt><dd data-order="name">The Teahouse Loop</dd></div>
+          <div><dt>Elevation</dt><dd data-order="elev">1.5×</dd></div>
+          <div><dt>Path</dt><dd data-order="path">0.8×</dd></div>
+          <div><dt>Size</dt><dd>250 mm square, framed</dd></div>
+        </dl>
+        <div class="plate__fields">
+          <label class="field"><span>Your name</span><input name="name" autocomplete="name" required></label>
+          <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required></label>
+          <label class="field field--wide"><span>Anything we should know <small>(optional)</small></span><textarea name="note" rows="2" placeholder="Who it is for, the day you hiked it, a link to your GPX"></textarea></label>
+        </div>
+        <div class="plate__foot">
+          <button class="btn" type="submit">Order your map</button>
+          <p class="plate__msg" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+      <footer class="foot">
+        <img src="assets/mark.png" width="626" height="626" alt="" class="foot__mark">
+        <p>Maps &amp; Memories · 3D-printed trail maps</p>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<noscript><style>.hero__poster{opacity:1}.hero__contours,.hero__gl{display:none}</style></noscript>
+<script src="scrollcraft.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

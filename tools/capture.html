@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,300..700&family=Geist:wght@300..600&display=swap" rel="stylesheet">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+<style>html,body{margin:0;height:100%;overflow:hidden}canvas{width:100vw;height:100vh;display:block}</style></head>
+<body><canvas id="c"></canvas><script type="module">
+import { MapScene, paintColours } from '/js/terrain.js';
+await document.fonts.ready;
+const q=new URLSearchParams(location.search);document.body.style.background=q.get('bg')||'#0e1822';
+const [h,m,meta]=await Promise.all([fetch('/data/teahouse-height.bin').then(r=>r.arrayBuffer()),fetch('/data/teahouse-mat.bin').then(r=>r.arrayBuffer()),fetch('/data/teahouse.json').then(r=>r.json())]);
+const s=new MapScene(document.getElementById('c'),{maxDpr:2});
+s.setTerrain({n:meta.grid,heights:new Float32Array(h),colours:paintColours(new Uint8Array(m),meta.grid),trail:meta.trail.map(p=>[p[0],p[1]]),baseScale:1.5,title:'The Teahouse Loop',line:'Banff National Park  ·  14.05 km  ·  555 m climbed'});
+const st=JSON.parse(q.get('st')||'{"frame":1,"lid":1}');s.set(st);
+const v=(q.get('v')||'28,30,960,-135,36,22').split(',').map(Number);s.view(...v);
+setTimeout(()=>{s.render(true);document.title='ready'},400);
+</script></body></html>

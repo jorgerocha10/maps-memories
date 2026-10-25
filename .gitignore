@@ -1,0 +1,16 @@
+# dependencies (playwright-core, three are fetched locally; three is vendored in vendor/)
+node_modules/
+package-lock.json
+
+# secrets: never commit keys
+.env
+.env.*
+
+# local verification output and raw renders
+lab/
+out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini

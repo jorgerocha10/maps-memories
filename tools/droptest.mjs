@@ -1,0 +1,18 @@
+import {chromium} from 'playwright-core';
+const [W,H,mode,arg,out]=process.argv.slice(2);
+const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const ctx=await b.newContext({viewport:{width:+W,height:+H}});
+await ctx.addInitScript(()=>{Element.prototype.setPointerCapture=()=>{};Element.prototype.releasePointerCapture=()=>{};Element.prototype.requestPointerLock=()=>{};});
+const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});p.on('requestfailed',r=>errs.push('REQFAIL '+r.url().slice(0,90)));
+await p.goto('http://localhost:4500/',{waitUntil:'networkidle'});await p.waitForTimeout(800);
+await p.evaluate(()=>document.querySelector('.surface').scrollIntoView({block:'center'}));await p.waitForTimeout(600);
+const t0=Date.now();
+if(mode==='sample') await p.click(`[data-sample="${arg}"]`); else await p.setInputFiles('#gpx-file',arg);
+await p.waitForFunction(()=>document.querySelector('.surface').dataset.state==='ready'||/did not|not readable|No track/.test(document.querySelector('.surface__status').textContent),null,{timeout:90000});
+console.log('built in',Date.now()-t0,'ms');await p.waitForTimeout(5500);
+await p.locator('.surface').screenshot({path:out+'-a.png'});
+await p.locator('[name=elev]').fill('2.5');await p.locator('[name=elev]').dispatchEvent('input');
+await p.click('[data-frame]');await p.waitForTimeout(2600);
+await p.locator('.surface').screenshot({path:out+'-b.png'});
+console.log(await p.evaluate(()=>JSON.stringify({status:document.querySelector('.surface__status').textContent,stats:[...document.querySelectorAll('[data-stat]')].map(e=>e.textContent),order:[...document.querySelectorAll('[data-order]')].map(e=>e.textContent)})));
+console.log(errs.join('\n')||'no errors');await b.close();
