@@ -206,7 +206,9 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
 .about__local { display: flex; align-items: center; gap: var(--sc-3); margin: var(--sc-6) 0 0; padding: var(--sc-3) 0;
   border-top: 1px solid var(--sc-hairline); border-bottom: 1px solid var(--sc-hairline); font-size: var(--sc-t-sm); font-weight: 500; color: var(--sc-ink); }
 .about__mark { flex: none; width: 36px; height: 36px; border-radius: 50%; }
-.about__sign { margin: var(--sc-5) 0 0; font-family: var(--sc-font-display); font-stretch: 112%; font-size: var(--sc-t-lg); color: var(--sc-accent); }
+.about__sign { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sc-3); margin: var(--sc-5) 0 0; font-family: var(--sc-font-display); font-stretch: 112%; font-size: var(--sc-t-lg); color: var(--sc-accent); }
+.flags { display: inline-flex; gap: 6px; }
+.flag { height: 15px; width: auto; border-radius: 2px; box-shadow: 0 0 0 1px rgb(37 57 70 / 0.18); }
 @media (prefers-reduced-motion: reduce) { .about__photo img { transform: none; } }
 @media (max-width: 860px) {
   .about__stage { grid-template-columns: 1fr; gap: var(--sc-6); padding: var(--sc-section) var(--sc-gutter); }
