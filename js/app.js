@@ -10,8 +10,6 @@ const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t *
 const lerp = (a, b, t) => a + (b - a) * t;
 const fmt = n => Math.round(n).toLocaleString('en-CA');
 
-// Under reduced motion the hero is a still composition, so it does not need the long pin.
-if (reduce) document.querySelector('#top').dataset.scSpan = '1.3';
 ScrollCraft.mount(document.body);
 
 function webglOK() {
@@ -103,17 +101,20 @@ function drawHero(p) {
   const calm = 1 - emerge;
   [[0.25, 6], [0.9, 14], [2.4, 26]].forEach(([s, px], i) => {
     const el = layers[i];
-    el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
+    if (!reduce) el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
     el.style.opacity = String([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p)));
   });
   if (!heroScene) return;
   const carve = smooth(0.31, 0.54, p);
   heroScene.set({
-    light: reduce ? 1 : smooth(0.06, 0.24, p),
-    rise: reduce ? 1 : smooth(0.12, 0.32, p),
-    carve: reduce ? 1 : carve,
-    frame: reduce ? 1 : smooth(0.58, 0.70, p),
-    lid: reduce ? 1 : smooth(0.68, 0.80, p),
+    // The story is driven by the visitor's own scroll, so it plays under reduced
+    // motion too. What reduced motion removes is the camera flight and the
+    // contours flying at the viewer: the camera holds one view, contours only fade.
+    light: smooth(0.06, 0.24, p),
+    rise: smooth(0.12, 0.32, p),
+    carve,
+    frame: smooth(0.58, 0.70, p),
+    lid: smooth(0.68, 0.80, p),
     glow: 0.9 * smooth(0.78, 0.81, p) * (1 - smooth(0.81, 0.9, p)),
   });
   const c = reduce ? camAt(1) : camAt(p);
@@ -121,7 +122,7 @@ function drawHero(p) {
   heroScene.render();
   // readout follows the carving head
   const ro = smooth(0.29, 0.32, p) * (1 - smooth(0.545, 0.575, p));
-  readout.style.opacity = reduce ? 0 : ro.toFixed(3);
+  readout.style.opacity = ro.toFixed(3);
   if (ro > 0) {
     const km = carve * ORDER.km;
     rKm.textContent = km.toFixed(1); rEle.textContent = fmt(eleAtKm(km));
@@ -147,7 +148,10 @@ function railLayout() {
   const w = railSvg.clientWidth, h = railSvg.clientHeight;
   if (!w || !h || (w === railW && h === railH)) return;
   railW = w; railH = h; railSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  railPts = RK.map((k, i) => [(4 + (RE[i] - re0) / (re1 - re0) * 52) / 60 * w, k / kmax * h]);
+  const n = i => (RE[i] - re0) / (re1 - re0);
+  // Tall rail (desktop margin): km runs down. Wide rail (phones, along the bottom): km runs across, height up.
+  railPts = h > w ? RK.map((k, i) => [(4 + n(i) * 52) / 60 * w, k / kmax * h])
+                  : RK.map((k, i) => [k / kmax * w, 4 + (1 - n(i)) * (h - 8)]);
   ghost.setAttribute('d', 'M' + railPts.map(fmtPt).join('L'));
 }
 function railAt(km) {   // the red line up to km, and the point where it ends
@@ -170,7 +174,7 @@ const lightSecs = [...document.querySelectorAll('.ground-light')];
 const placesSec = document.querySelector('#places'), yoursSec = document.querySelector('#yours'), orderSec = document.querySelector('#order');
 function chrome() {
   const hp = heroVisible ? heroP : (hero.getBoundingClientRect().top > 0 ? 0 : 1);
-  const show = reduce ? 0 : smooth(0.26, 0.31, hp) * (1 - smooth(0.56, 0.61, hp));
+  const show = smooth(0.26, 0.31, hp) * (1 - smooth(0.56, 0.61, hp));
   route.style.opacity = show.toFixed(3); route.style.visibility = show > 0.01 ? 'visible' : 'hidden'; route.classList.toggle('is-on', show > 0.5);
   const cv = smooth(CARVE[0], CARVE[1], hp);
   document.documentElement.style.setProperty('--route-p', cv.toFixed(4));
@@ -406,6 +410,16 @@ plate.querySelector('[data-copy]').addEventListener('click', async e => {
   setTimeout(() => { b.textContent = label; }, 2200);
 });
 
+/* ----------------------------------------------------------------- debug */
+// ?debug=1 shows what this device reports, for diagnosing a phone from the phone.
+const dbg = new URLSearchParams(location.search).get('debug') === '1' && Object.assign(document.createElement('pre'), { className: 'dbg' });
+if (dbg) {
+  const gl = heroScene?.renderer.getContext(), ext = gl?.getExtension('WEBGL_debug_renderer_info');
+  dbg.dataset.base = [`reduced motion: ${reduce}`, `webgl: ${GL ? 'yes' : 'NO'}  scene: ${heroScene ? 'ok' : 'FAILED'}`,
+    `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}`].join('\n');
+  document.body.append(dbg);
+}
+
 /* ------------------------------------------------------------------ loop */
 let heroVisible = true;
 new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; }).observe(hero);
@@ -414,6 +428,7 @@ function frame() {
   heroP += (heroTarget - heroP) * (reduce ? 1 : 0.14);
   if (Math.abs(heroTarget - heroP) < 0.0004) heroP = heroTarget;
   if (heroVisible) drawHero(heroP);
+  if (dbg) dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}`;
   chrome();
   if (placesVisible) drawProfile();
   if (sScene && sVisible) {

@@ -89,9 +89,10 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
 .route { opacity: 0; visibility: hidden; }
 .route:not(.is-on) .route__stops a { pointer-events: none; }
 @media (max-width: 1099px) {
-  .route { inset: auto 0 0 0; top: auto; width: auto; height: 3px; display: block; }
-  .route__svg, .route__stops, .route__head { display: none; }
-  .route::after { content: ""; position: absolute; inset: 0; background: var(--sc-accent); transform-origin: left; transform: scaleX(var(--route-p, 0)); }
+  /* Phones and tablets: the trail runs along the bottom as a small elevation profile. */
+  .route { top: auto; right: var(--sc-gutter); left: var(--sc-gutter); bottom: calc(env(safe-area-inset-bottom) + 1rem); width: auto; height: 3rem; display: block; }
+  .route__svg { width: 100%; height: 100%; }
+  .route__stops { display: none; }
 }
 
 /* ------------------------------------------------------------------- hero */
@@ -278,7 +279,6 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
   .hero__title--close { font-size: clamp(2rem, 8.6vw, 2.7rem); }
   .hero__sub { font-size: var(--sc-t-base); }
   .hero__close .btn { margin-top: var(--sc-5); }
-  .hero__readout { bottom: clamp(2rem, 6vh, 4rem); }
   .inside__grid { grid-template-columns: 1fr; padding-right: var(--sc-gutter); gap: var(--sc-6); }
   .inside__fig { position: static; }
   .inside__text { padding-top: 0; }
@@ -299,6 +299,7 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
   .plate__h { font-size: var(--sc-t-2xl); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero__contours { display: none; }
-}
+@media (max-width: 1099px) { .hero__readout { bottom: calc(env(safe-area-inset-bottom) + 5.25rem); } }
+
+.dbg { position: fixed; z-index: 999; left: 8px; top: 8px; margin: 0; padding: 8px 10px; max-width: calc(100vw - 16px); white-space: pre-wrap;
+  background: rgb(0 0 0 / 0.78); color: #9f9; font: 12px/1.4 ui-monospace, monospace; border-radius: 6px; pointer-events: none; }
