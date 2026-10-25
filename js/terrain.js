@@ -42,7 +42,7 @@ function makePlaque(title, line) {
 }
 
 export class MapScene {
-  constructor(canvas, { maxDpr = 1.75, shadows = true } = {}) {
+  constructor(canvas, { maxDpr = 1.75, shadows = true, shadowSize = 2048 } = {}) {
     this.canvas = canvas;
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio || 1, maxDpr));
@@ -61,7 +61,7 @@ export class MapScene {
     const sun = this.sun = new THREE.DirectionalLight('#fff1df', 2.6);
     sun.position.set(-230, 260, -140); sun.castShadow = shadows;
     Object.assign(sun.shadow.camera, { left: -230, right: 230, top: 230, bottom: -230, near: 50, far: 900 });
-    sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6;
+    sun.shadow.mapSize.set(shadowSize, shadowSize); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6;
     s.add(sun);
 
     this.model = new THREE.Group(); s.add(this.model);
@@ -104,6 +104,7 @@ export class MapScene {
   }
 
   setLidHeight(h) {
+    this.lid.children.forEach(o => o.geometry.dispose());   // the lid is rebuilt as the terrain rises; free the old one
     this.lid.clear();
     const g = new THREE.BoxGeometry(258, h, 258);
     const box = new THREE.Mesh(g, this.lidMat); box.position.y = h / 2; box.renderOrder = 10;

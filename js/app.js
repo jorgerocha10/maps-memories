@@ -55,7 +55,10 @@ const rPlace = readout.querySelector('.readout__place'), rKm = readout.querySele
 let heroScene = null;
 if (GL) {
   try {
-    heroScene = new MapScene(heroCanvas, { maxDpr: phone() ? 1.5 : 1.75 });
+    // Phones get a lighter renderer: fewer pixels and a smaller shadow map keep GPU memory down.
+    heroScene = new MapScene(heroCanvas, phone() ? { maxDpr: 1.25, shadowSize: 1024 } : { maxDpr: 1.75 });
+    // If the phone reclaims the GPU anyway, fall back to the still poster instead of a blank stage.
+    heroCanvas.addEventListener('webglcontextlost', e => { e.preventDefault(); document.documentElement.classList.add('no-webgl'); heroScene = null; });
     heroScene.setTerrain(HERO);
   } catch (e) { console.warn(e); document.documentElement.classList.add('no-webgl'); heroScene = null; }
 }
@@ -101,7 +104,8 @@ function drawHero(p) {
   const calm = 1 - emerge;
   [[0.25, 6], [0.9, 14], [2.4, 26]].forEach(([s, px], i) => {
     const el = layers[i];
-    if (!reduce) el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
+    // Scaling these layers multiplies the texture the phone must hold, so phones only fade them.
+    if (!reduce && !phone()) el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
     el.style.opacity = String([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p)));
   });
   if (!heroScene) return;
@@ -295,7 +299,7 @@ const show = { forest: true, water: true, scree: true };
 
 function ensureSurface() {
   if (sScene || !GL) return sScene;
-  sScene = new MapScene(sCanvas, { maxDpr: phone() ? 1.5 : 1.75 });
+  sScene = new MapScene(sCanvas, phone() ? { maxDpr: 1.25, shadowSize: 1024 } : { maxDpr: 1.75 });
   sScene.view(20, 42, phone() ? 1150 : 640, 0, 10, 0);
   if (fine) {
     controls = new OrbitControls(sScene.camera, sCanvas);
@@ -418,6 +422,7 @@ if (dbg) {
   dbg.dataset.base = [`reduced motion: ${reduce}`, `webgl: ${GL ? 'yes' : 'NO'}  scene: ${heroScene ? 'ok' : 'FAILED'}`,
     `gpu: ${ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '?'}`, `viewport: ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}`].join('\n');
   document.body.append(dbg);
+  window.__hero = heroScene;
 }
 
 /* ------------------------------------------------------------------ loop */
