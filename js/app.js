@@ -218,14 +218,14 @@ const pRead = strip.querySelector('.profile__readout'), pKm = pRead.querySelecto
 const stopEls = [...strip.querySelectorAll('.stop')];
 const P_LO = 1700, P_HI = 2150, svgNS = 'http://www.w3.org/2000/svg';
 stopEls.forEach(s => s.style.setProperty('--x', (+s.dataset.km / kmax).toFixed(4)));
-// Preview: ?art=illustrated swaps the stop photos for the illustrated set.
-if (new URLSearchParams(location.search).get('art') === 'illustrated') {
+// The stops are illustrated; ?art=photo shows the earlier photographic set instead.
+if (new URLSearchParams(location.search).get('art') === 'photo') {
   strip.querySelectorAll('.stop picture').forEach(pic => {
-    pic.querySelector('source').srcset = pic.querySelector('source').srcset.replace('assets/wp', 'assets/il');
-    const img = pic.querySelector('img'); img.src = img.getAttribute('src').replace('assets/wp', 'assets/il');
-    img.alt = 'Illustration: ' + img.alt;
+    pic.querySelector('source').srcset = pic.querySelector('source').srcset.replace('assets/il', 'assets/wp');
+    const img = pic.querySelector('img'); img.src = img.getAttribute('src').replace('assets/il', 'assets/wp');
+    img.alt = img.alt.replace(/^Illustration: /, 'Photograph: ');
   });
-  document.querySelector('.places__note').textContent = 'Illustrations are artistic impressions. Distances and heights are from the trail’s GPX.';
+  document.querySelector('.places__note').textContent = 'Photographs are illustrative. Distances and heights are from the trail’s GPX.';
 }
 let pW = 0, pH = 0, pPts = [], pPad = { t: 14, b: 26 };
 const px = km => km / kmax * pW, py = e => pPad.t + (1 - (e - P_LO) / (P_HI - P_LO)) * (pH - pPad.t - pPad.b);

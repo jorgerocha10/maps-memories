@@ -13,7 +13,7 @@ Do not upload `node_modules/`, `tools/`, `out/`, `lab/` or the `.env` one folder
 ## Where things come from
 - `data/teahouse-*.bin`, `data/teahouse.json`: exported from `Treehouse loop.blend` (TrailPrint3D map, 512x512 heights + material map + trail).
 - `data/profile.json`, `assets/contour-*.svg`: built from the GPX and the heightmap (`tools/wpstats.mjs`, `tools/contours.mjs`).
-- `assets/wp*.webp`: generated with OpenAI gpt-image-2 (`tools/gen.mjs`, key read from `../../../.env`). Labelled illustrative on the page.
+- `assets/il*.webp` (shown) and `assets/wp*.webp` (photo set, `?art=photo`): generated with OpenAI gpt-image-2 (`tools/gen.mjs`, `illus` / `photo` styles, key read from `../../../.env`). Labelled on the page.
 - `assets/detail-*.webp`, `assets/poster-*.webp`: rendered from the real model through the site's own renderer (`tools/capture.html` + `tools/capture.mjs`).
 - Live GPX surface: elevation from AWS Terrain Tiles; lakes, rivers, streams, forest and scree from OpenStreetMap via OpenFreeMap vector tiles (`js/mvt.js` decodes them). Overpass is the backup, then an elevation/slope estimate (the page says so).
 
