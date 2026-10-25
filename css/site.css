@@ -191,6 +191,29 @@ body.on-light .route { color: #4a5c69; } body.on-light .route__stops a.is-passed
 .profile__readout { position: absolute; left: 0; top: 0; margin: 0; padding: 3px 8px; border-radius: var(--sc-r-sm); white-space: nowrap;
   background: #253946; color: #f7f5f6; font-size: var(--sc-t-xs); font-variant-numeric: tabular-nums; will-change: transform; pointer-events: none; }
 
+/* ------------------------------------------------------------------ about */
+.about.ground-light { background: #f4f1ee; }
+.about__stage { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(2rem, 5vw, 6rem);
+  padding: calc(var(--sc-8) + 1rem) var(--sc-gutter) var(--sc-7); }
+.about__photo { margin: 0; border-radius: var(--sc-r-md); overflow: hidden; max-height: 74vh;
+  box-shadow: 0 30px 60px -32px rgb(37 57 70 / 0.5), 0 2px 6px rgb(37 57 70 / 0.1); }
+.about__photo img { display: block; width: 100%; height: auto; aspect-ratio: 1714 / 1368; object-fit: cover;
+  transform: scale(calc(1.06 - 0.06 * var(--sc-p, 0))); transform-origin: 50% 40%; }
+.about__text { max-width: 34rem; }
+.about__h { font-size: clamp(2rem, 1.3rem + 2.2vw, 3.4rem); font-weight: 450; line-height: 1.02; }
+.about__text .sc-body { margin-top: var(--sc-4); color: var(--sc-ink-soft); }
+.about__h + .sc-body { margin-top: var(--sc-6); }
+.about__local { display: flex; align-items: center; gap: var(--sc-3); margin: var(--sc-6) 0 0; padding: var(--sc-3) 0;
+  border-top: 1px solid var(--sc-hairline); border-bottom: 1px solid var(--sc-hairline); font-size: var(--sc-t-sm); font-weight: 500; color: var(--sc-ink); }
+.about__mark { flex: none; width: 36px; height: 36px; border-radius: 50%; }
+.about__sign { margin: var(--sc-5) 0 0; font-family: var(--sc-font-display); font-stretch: 112%; font-size: var(--sc-t-lg); color: var(--sc-accent); }
+@media (prefers-reduced-motion: reduce) { .about__photo img { transform: none; } }
+@media (max-width: 860px) {
+  .about__stage { grid-template-columns: 1fr; gap: var(--sc-6); padding: var(--sc-section) var(--sc-gutter); }
+  .about__photo { max-height: none; }
+  .about__photo img { transform: none; }
+}
+
 /* ------------------------------------------------------------------ yours */
 .yours { padding-block: var(--sc-section); }
 .yours__grid { display: grid; gap: var(--sc-7); }

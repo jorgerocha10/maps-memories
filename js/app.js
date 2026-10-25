@@ -14,6 +14,14 @@ const SEQ_MODE = SCREEN_MIN <= 600 || matchMedia('(max-width: 860px)').matches |
 const LOAD_W = innerWidth;   // recorded for ?debug=1
 const fmt = n => Math.round(n).toLocaleString('en-CA');
 
+// About: pinned on desktop with lines rising in; on phones the copy needs the room, so it
+// becomes a plain section whose lines fade in as they enter.
+if (SEQ_MODE) {
+  const about = document.querySelector('#about'), text = about.querySelector('.about__text');
+  about.dataset.scAct = 'flow'; delete about.dataset.scSpan;
+  text.querySelectorAll('[data-sc-cue]').forEach(el => el.removeAttribute('data-sc-cue'));
+  text.setAttribute('data-sc-in', ''); text.dataset.scStagger = '70';
+}
 ScrollCraft.mount(document.body);
 
 function webglOK() {
