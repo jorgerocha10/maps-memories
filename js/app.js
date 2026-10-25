@@ -134,14 +134,28 @@ function drawHero(p) {
 const route = document.querySelector('.route');
 const ghost = route.querySelector('.route__ghost'), live = route.querySelector('.route__live'), head = route.querySelector('.route__head');
 const stops = [...route.querySelectorAll('.route__stops a')];
-(function buildRoute() {
-  const K = profile.km, E = profile.ele, kmax = K[K.length - 1], e0 = Math.min(...E), e1 = Math.max(...E);
-  let d = ''; for (let i = 0; i < K.length; i += 2) d += (i ? 'L' : 'M') + (4 + (E[i] - e0) / (e1 - e0) * 52).toFixed(2) + ' ' + (K[i] / kmax * 1000).toFixed(1);
-  ghost.setAttribute('d', d); live.setAttribute('d', d);
-  stops.forEach(a => { a.parentElement.style.top = (+a.dataset.km / kmax * 100) + '%'; });
-  route.dataset.kmax = kmax;
-})();
-const liveLen = live.getTotalLength(); live.style.strokeDasharray = liveLen; live.style.strokeDashoffset = liveLen;
+// The rail is drawn in real pixels, so the red line, the dot, the stop labels and
+// the km readout all sit on one scale: km down the rail, elevation across it.
+const railSvg = route.querySelector('.route__svg');
+const RK = profile.km, RE = profile.ele, kmax = RK[RK.length - 1];
+const re0 = Math.min(...RE), re1 = Math.max(...RE);
+route.dataset.kmax = kmax;
+stops.forEach(a => { a.parentElement.style.top = (+a.dataset.km / kmax * 100) + '%'; });
+let railW = 0, railH = 0, railPts = [];
+const fmtPt = ([x, y]) => x.toFixed(1) + ' ' + y.toFixed(1);
+function railLayout() {
+  const w = railSvg.clientWidth, h = railSvg.clientHeight;
+  if (!w || !h || (w === railW && h === railH)) return;
+  railW = w; railH = h; railSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  railPts = RK.map((k, i) => [(4 + (RE[i] - re0) / (re1 - re0) * 52) / 60 * w, k / kmax * h]);
+  ghost.setAttribute('d', 'M' + railPts.map(fmtPt).join('L'));
+}
+function railAt(km) {   // the red line up to km, and the point where it ends
+  let i = 1; while (i < RK.length - 1 && RK[i] < km) i++;
+  const t = clamp((km - RK[i - 1]) / ((RK[i] - RK[i - 1]) || 1));
+  const end = [lerp(railPts[i - 1][0], railPts[i][0], t), lerp(railPts[i - 1][1], railPts[i][1], t)];
+  return { d: 'M' + railPts.slice(0, i).map(fmtPt).join('L') + 'L' + fmtPt(end), end };
+}
 // The rail belongs to the map animation: it fills as the trail carves, and a
 // waypoint jumps to the scroll position where the carving reaches it.
 const CARVE = [0.31, 0.54];
@@ -161,10 +175,11 @@ function chrome() {
   const cv = smooth(CARVE[0], CARVE[1], hp);
   document.documentElement.style.setProperty('--route-p', cv.toFixed(4));
   if (show > 0) {
-    live.style.strokeDashoffset = (liveLen * (1 - cv)).toFixed(1);
-    const pt = live.getPointAtLength(liveLen * cv), box = route.querySelector('.route__svg').getBoundingClientRect();
-    head.style.transform = `translate(${pt.x / 60 * box.width}px, ${pt.y / 1000 * box.height}px)`;
-    const kmNow = cv * +route.dataset.kmax; stops.forEach(a => a.classList.toggle('is-passed', +a.dataset.km <= kmNow + 0.01));
+    railLayout();
+    const kmNow = cv * kmax, r = railAt(kmNow);
+    live.setAttribute('d', r.d);
+    head.style.transform = `translate(${r.end[0]}px, ${r.end[1]}px)`;
+    stops.forEach(a => a.classList.toggle('is-passed', +a.dataset.km <= kmNow + 0.01));
   }
   const y = 40; document.body.classList.toggle('on-light', lightSecs.some(s => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom > y; }));
   const rp = placesSec.getBoundingClientRect(); document.body.classList.toggle('at-places', rp.top < innerHeight * 0.5 && rp.bottom > innerHeight * 0.5);
