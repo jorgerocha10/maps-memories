@@ -79,9 +79,12 @@ if (GL && !SEQ_MODE) {
 // point: all 97 frames are kept only as compressed files (about 2 MB), and at most
 // SEQ_DECODED of them are decoded at once (about 5 MB each). Older bitmaps are closed
 // explicitly, so a long scroll cannot pile up hundreds of MB of decoded pixels.
-const SEQ_DECODED = 8;
-const seq = SEQ_MODE ? { blobs: new Array(SEQ.count), bmps: new Map(), pending: new Set(), ctx: heroCanvas.getContext('2d'),
-  shown: -1, w: 0, h: 0, want: 0 } : null;
+const SEQ_DECODED = 12, SEQ_AHEAD = 4;
+const seq = SEQ_MODE ? { blobs: new Array(SEQ.count), bmps: new Map(), pending: new Set(), ctx: heroCanvas.getContext('2d', { alpha: false }),
+  shown: -1, w: 0, h: 0, cw: 0, ch: 0, want: 0, dir: 1 } : null;
+// The canvas size is watched, not read each frame: reading it after the frame's style
+// writes forced a second layout of the whole page on every frame.
+if (seq) new ResizeObserver(([e]) => { seq.cw = e.contentRect.width; seq.ch = e.contentRect.height; }).observe(heroCanvas);
 if (seq) {
   // First frame, then the last, then coarse-to-fine, so an early scroll always has a near frame.
   const order = [0, SEQ.count - 1], seen = new Set(order);
@@ -102,18 +105,24 @@ function decodeFrame(i) {
     if (!heroVisible) { bmp.close(); return; }   // finished decoding after the hero left the screen
     seq.bmps.set(i, bmp); seq.shown = -1;
     // Keep only the frames nearest to where the visitor is; free the rest now.
-    const far = [...seq.bmps.keys()].sort((a, b) => Math.abs(b - seq.want) - Math.abs(a - seq.want));
+    const cost = k => { const d = (k - seq.want) * seq.dir; return d >= 0 ? d : -2 * d; };   // behind counts double
+    const far = [...seq.bmps.keys()].sort((a, b) => cost(b) - cost(a));
     while (seq.bmps.size > SEQ_DECODED) { const k = far.shift(); seq.bmps.get(k).close(); seq.bmps.delete(k); }
   }).catch(() => seq.pending.delete(i));
 }
 function drawSeq(p) {
   const c = heroCanvas, dpr = Math.min(devicePixelRatio || 1, 2);
-  const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  const w = Math.round(seq.cw * dpr), h = Math.round(seq.ch * dpr);
+  if (!w || !h) return;
   if (w !== seq.w || h !== seq.h) { c.width = seq.w = w; c.height = seq.h = h; seq.shown = -1; }
-  const want = seq.want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
+  const want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
+  if (want !== seq.want) seq.dir = Math.sign(want - seq.want);
+  seq.want = want;
+  // Decode the wanted frame, then the next few in the direction the visitor is
+  // scrolling, so they are ready before the scroll reaches them.
   decodeFrame(want);
-  if (want + 1 < SEQ.count) decodeFrame(want + 1);
-  if (want > 0) decodeFrame(want - 1);
+  for (let k = 1; k <= SEQ_AHEAD; k++) { const j = want + seq.dir * k; if (j >= 0 && j < SEQ.count) decodeFrame(j); }
+  if (want - seq.dir >= 0 && want - seq.dir < SEQ.count) decodeFrame(want - seq.dir);
   let i = -1;   // nearest decoded frame while the exact one decodes
   for (let d = 0; d < SEQ.count && i < 0; d++) { if (seq.bmps.has(want - d)) i = want - d; else if (seq.bmps.has(want + d)) i = want + d; }
   if (i < 0 || i === seq.shown) return;
@@ -135,6 +144,9 @@ function heroProgress() {
 }
 if (fine && !reduce) addEventListener('pointermove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; }, { passive: true });
 
+// Style writes only when the value changes: an unchanged write still dirties style.
+function put(el, prop, v) { const k = '_' + prop; if (el[k] !== v) { el[k] = v; el.style[prop] = v; } }
+function text(el, v) { if (el.textContent !== v) el.textContent = v; }
 function drawHero(p) {
   const emerge = smooth(0.08, 0.30, p);
   mxs += (mx - mxs) * 0.06; mys += (my - mys) * 0.06;
@@ -142,8 +154,8 @@ function drawHero(p) {
   [[0.25, 6], [0.9, 14], [2.4, 26]].forEach(([s, px], i) => {
     const el = layers[i];
     // Scaling these layers multiplies the texture the phone must hold, so phones only fade them.
-    if (!reduce && !phone()) el.style.transform = `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`;
-    el.style.opacity = String([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p)));
+    if (!reduce && !phone()) put(el, 'transform', `translate(calc(-50% + ${mxs * px * calm}px), calc(-50% + ${mys * px * calm}px)) scale(${1 + s * emerge})`);
+    put(el, 'opacity', ([0.32, 0.55, 0.85][i] * (1 - smooth(0.12, 0.28 - i * 0.03, p))).toFixed(3));
   });
   const st = heroState(p), carve = st.carve;
   if (seq && !OFF.has('frames')) drawSeq(p);
@@ -158,12 +170,12 @@ function drawHero(p) {
   }
   // readout follows the carving head
   const ro = smooth(0.29, 0.32, p) * (1 - smooth(0.545, 0.575, p));
-  readout.style.opacity = ro.toFixed(3);
+  put(readout, 'opacity', ro.toFixed(3));
   if (ro > 0) {
     const km = carve * ORDER.km;
-    rKm.textContent = km.toFixed(1); rEle.textContent = fmt(eleAtKm(km));
-    rPlace.textContent = km < 0.4 ? 'Lake Louise Lakeshore' : km < 3.62 ? 'Climbing to Lake Agnes Tea House'
-      : km < 8.15 ? 'On to the Plain of Six Glaciers' : km < 13.6 ? 'Down to Lake Louise' : 'Back at the lake';
+    text(rKm, km.toFixed(1)); text(rEle, fmt(eleAtKm(km)));
+    text(rPlace, km < 0.4 ? 'Lake Louise Lakeshore' : km < 3.62 ? 'Climbing to Lake Agnes Tea House'
+      : km < 8.15 ? 'On to the Plain of Six Glaciers' : km < 13.6 ? 'Down to Lake Louise' : 'Back at the lake');
   }
 }
 
@@ -207,28 +219,33 @@ stops.forEach(a => a.addEventListener('click', e => {
 
 const lightSecs = [...document.querySelectorAll('.ground-light')];
 const placesSec = document.querySelector('#places'), yoursSec = document.querySelector('#yours'), orderSec = document.querySelector('#order');
-function chrome() {
-  const hp = heroVisible ? heroP : (hero.getBoundingClientRect().top > 0 ? 0 : 1);
+// All layout reads for a frame happen here, before anything on the page is written.
+function measure() {
+  const y = 40, ih = innerHeight;
+  const rp = placesSec.getBoundingClientRect(), ry = yoursSec.getBoundingClientRect();
+  railLayout();
+  return { heroAbove: hero.getBoundingClientRect().top > 0,
+    onLight: lightSecs.some(s => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom > y; }),
+    atPlaces: rp.top < ih * 0.5 && rp.bottom > ih * 0.5, atYours: ry.top < ih * 0.6 && ry.bottom > ih * 0.4,
+    atOrder: orderSec.getBoundingClientRect().top < ih * 0.5 };
+}
+function chrome(m) {
+  const hp = heroVisible ? heroP : (m.heroAbove ? 0 : 1);
   const show = smooth(0.26, 0.31, hp) * (1 - smooth(0.56, 0.61, hp));
-  route.style.opacity = show.toFixed(3); route.style.visibility = show > 0.01 ? 'visible' : 'hidden'; route.classList.toggle('is-on', show > 0.5);
+  put(route, 'opacity', show.toFixed(3)); put(route, 'visibility', show > 0.01 ? 'visible' : 'hidden'); route.classList.toggle('is-on', show > 0.5);
   const cv = smooth(CARVE[0], CARVE[1], hp);
-  document.documentElement.style.setProperty('--route-p', cv.toFixed(4));
   if (show > 0) {
-    railLayout();
     const kmNow = cv * kmax;
     if (railPts.length) {   // the side rail has no size on phones, where only the bottom bar shows
       const r = railAt(kmNow);
-      live.setAttribute('d', r.d);
-      head.style.transform = `translate(${r.end[0]}px, ${r.end[1]}px)`;
+      if (live._d !== r.d) { live._d = r.d; live.setAttribute('d', r.d); }
+      put(head, 'transform', `translate(${r.end[0].toFixed(1)}px, ${r.end[1].toFixed(1)}px)`);
     }
     stops.forEach(a => a.classList.toggle('is-passed', +a.dataset.km <= kmNow + 0.01));
   }
-  const y = 40; document.body.classList.toggle('on-light', lightSecs.some(s => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom > y; }));
-  const rp = placesSec.getBoundingClientRect(); document.body.classList.toggle('at-places', rp.top < innerHeight * 0.5 && rp.bottom > innerHeight * 0.5);
-  const ry = yoursSec.getBoundingClientRect(); document.body.classList.toggle('at-yours', ry.top < innerHeight * 0.6 && ry.bottom > innerHeight * 0.4);
-  const atOrder = orderSec.getBoundingClientRect().top < innerHeight * 0.5;
-  document.body.classList.toggle('at-order', atOrder);
-  collarState(atOrder);
+  const bc = document.body.classList;
+  bc.toggle('on-light', m.onLight); bc.toggle('at-places', m.atPlaces); bc.toggle('at-yours', m.atYours); bc.toggle('at-order', m.atOrder);
+  collarState(m.atOrder);
 }
 
 // Header: bare at the top of the hero, slides away while reading down,
@@ -477,7 +494,7 @@ if (dbg) {
     `width at load: ${LOAD_W}  screen: ${screen.width}x${screen.height}`,
     `off: ${[...OFF].join(',') || 'nothing'}`, `last visit: ${prev}`].join('\n');
   document.body.append(dbg);
-  window.__hero = heroScene;
+  window.__hero = heroScene; window.__seq = seq;
 }
 
 /* ------------------------------------------------------------------ loop */
@@ -488,12 +505,13 @@ function frame(now) {
   const was = heroVisible; heroVisible = heroOnScreen();
   if (was && !heroVisible) releaseSeq();
   heroTarget = heroProgress();
+  const m = measure();
   heroP += (heroTarget - heroP) * (reduce ? 1 : 0.14);
   if (Math.abs(heroTarget - heroP) < 0.0004) heroP = heroTarget;
   if (heroVisible) drawHero(heroP);
-  if (now - lastCrumb > 400) { lastCrumb = now; crumb(); }
+  if (dbg && now - lastCrumb > 400) { lastCrumb = now; crumb(); }
   if (dbg) dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}  decoded: ${seq ? seq.bmps.size : '-'}`;
-  chrome();
+  chrome(m);
   if (placesVisible) drawProfile();
   if (sScene && sVisible) {
     if (controls) controls.update();
