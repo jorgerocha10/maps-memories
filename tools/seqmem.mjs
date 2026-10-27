@@ -2,7 +2,7 @@ import {chromium} from 'playwright-core';
 const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const p=await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:3});const errs=[];p.on('pageerror',e=>errs.push(e.message));
 await p.goto('http://localhost:4500/?debug=1',{waitUntil:'networkidle'});await p.waitForTimeout(1500);
-const read=async()=>{const t=await p.textContent('.dbg');return t.split('\n').slice(-1)[0];};
+const read=async()=>{const t=await p.textContent('.dbg');return t.split('\n').slice(-2).join('  ');};
 let maxDec=0;const path=[...Array(26).keys()].map(i=>i/25).concat([0.6,0.3,0.1,0.5,0.9,1]);
 for(const f of path){await p.evaluate(f=>{const e=document.querySelector('#top');scrollTo(0,(e.offsetHeight-innerHeight)*f)},f);await p.waitForTimeout(220);
   const l=await read();const d=+(l.match(/decoded: (\d+)/)||[0,0])[1];maxDec=Math.max(maxDec,d);}

@@ -79,9 +79,9 @@ if (GL && !SEQ_MODE) {
 // point: all 97 frames are kept only as compressed files (about 2 MB), and at most
 // SEQ_DECODED of them are decoded at once (about 5 MB each). Older bitmaps are closed
 // explicitly, so a long scroll cannot pile up hundreds of MB of decoded pixels.
-const SEQ_DECODED = 12, SEQ_AHEAD = 4;
+const SEQ_DECODED = 14, SEQ_AHEAD = 6;
 const seq = SEQ_MODE ? { blobs: new Array(SEQ.count), bmps: new Map(), pending: new Set(), ctx: heroCanvas.getContext('2d', { alpha: false }),
-  shown: -1, w: 0, h: 0, cw: 0, ch: 0, want: 0, dir: 1 } : null;
+  shown: -1, key: '', w: 0, h: 0, cw: 0, ch: 0, want: 0, dir: 1, miss: 0, drawMs: 0 } : null;
 // The canvas size is watched, not read each frame: reading it after the frame's style
 // writes forced a second layout of the whole page on every frame.
 if (seq) new ResizeObserver(([e]) => { seq.cw = e.contentRect.width; seq.ch = e.contentRect.height; }).observe(heroCanvas);
@@ -93,7 +93,7 @@ if (seq) {
   const pump = () => {
     if (next >= order.length) return;
     const i = order[next++];
-    fetch(seqFile(i)).then(r => r.ok ? r.blob() : null).then(b => { if (b) { seq.blobs[i] = b; seq.shown = -1; } }).catch(() => {}).finally(pump);
+    fetch(seqFile(i)).then(r => r.ok ? r.blob() : null).then(b => { if (b) { seq.blobs[i] = b; seq.key = ''; } }).catch(() => {}).finally(pump);
   };
   for (let k = 0; k < 4; k++) pump();   // four downloads in flight
 }
@@ -103,7 +103,7 @@ function decodeFrame(i) {
   createImageBitmap(seq.blobs[i]).then(bmp => {
     seq.pending.delete(i);
     if (!heroVisible) { bmp.close(); return; }   // finished decoding after the hero left the screen
-    seq.bmps.set(i, bmp); seq.shown = -1;
+    seq.bmps.set(i, bmp); seq.key = '';
     // Keep only the frames nearest to where the visitor is; free the rest now.
     const cost = k => { const d = (k - seq.want) * seq.dir; return d >= 0 ? d : -2 * d; };   // behind counts double
     const far = [...seq.bmps.keys()].sort((a, b) => cost(b) - cost(a));
@@ -114,25 +114,35 @@ function drawSeq(p) {
   const c = heroCanvas, dpr = Math.min(devicePixelRatio || 1, 2);
   const w = Math.round(seq.cw * dpr), h = Math.round(seq.ch * dpr);
   if (!w || !h) return;
-  if (w !== seq.w || h !== seq.h) { c.width = seq.w = w; c.height = seq.h = h; seq.shown = -1; }
-  const want = clamp(Math.round((p - SEQ.from) / SEQ.step), 0, SEQ.count - 1);
+  if (w !== seq.w || h !== seq.h) { c.width = seq.w = w; c.height = seq.h = h; seq.key = ''; }
+  // The scroll sits between two frames: draw the earlier one and fade the next over it
+  // by the fraction, so the picture moves continuously instead of stepping frame to frame.
+  const f = clamp((p - SEQ.from) / SEQ.step, 0, SEQ.count - 1);
+  const want = Math.floor(f), t = f - want;
   if (want !== seq.want) seq.dir = Math.sign(want - seq.want);
   seq.want = want;
   // Decode the wanted frame, then the next few in the direction the visitor is
   // scrolling, so they are ready before the scroll reaches them.
-  decodeFrame(want);
+  decodeFrame(want); if (want + 1 < SEQ.count) decodeFrame(want + 1);
   for (let k = 1; k <= SEQ_AHEAD; k++) { const j = want + seq.dir * k; if (j >= 0 && j < SEQ.count) decodeFrame(j); }
   if (want - seq.dir >= 0 && want - seq.dir < SEQ.count) decodeFrame(want - seq.dir);
   let i = -1;   // nearest decoded frame while the exact one decodes
   for (let d = 0; d < SEQ.count && i < 0; d++) { if (seq.bmps.has(want - d)) i = want - d; else if (seq.bmps.has(want + d)) i = want + d; }
-  if (i < 0 || i === seq.shown) return;
-  const im = seq.bmps.get(i), s = Math.max(w / im.width, h / im.height);   // cover, centred
-  seq.ctx.drawImage(im, (w - im.width * s) / 2, (h - im.height * s) / 2, im.width * s, im.height * s);
-  seq.shown = i;
+  if (i < 0) return;
+  if (i !== want) seq.miss++;
+  const next = i === want && t > 0.01 ? seq.bmps.get(want + 1) : null;   // blend only between exact neighbours
+  const a = next ? Math.round(t * 32) / 32 : 0, key = i + ':' + a;
+  if (key === seq.key) return;
+  const t0 = performance.now(), g = seq.ctx, im = seq.bmps.get(i), s = Math.max(w / im.width, h / im.height);   // cover, centred
+  const x = (w - im.width * s) / 2, y = (h - im.height * s) / 2, dw = im.width * s, dh = im.height * s;
+  g.globalAlpha = 1; g.drawImage(im, x, y, dw, dh);
+  if (a > 0) { g.globalAlpha = a; g.drawImage(next, x, y, dw, dh); g.globalAlpha = 1; }
+  seq.shown = i; seq.key = key;
+  seq.drawMs += (performance.now() - t0 - seq.drawMs) * 0.1;
 }
 function releaseSeq() {   // hero scrolled away: free every decoded frame
   if (!seq) return;
-  seq.bmps.forEach(b => b.close()); seq.bmps.clear(); seq.shown = -1;
+  seq.bmps.forEach(b => b.close()); seq.bmps.clear(); seq.shown = -1; seq.key = '';
 }
 const fp = () => { const d = 860, f = 30 * Math.PI / 180; return 250 / (2 * d * Math.tan(f / 2)) * 100; };
 hero.style.setProperty('--fp', fp() + 'vh');
@@ -498,7 +508,7 @@ if (dbg) {
 }
 
 /* ------------------------------------------------------------------ loop */
-let heroVisible = true, lastCrumb = 0;
+let heroVisible = true, lastCrumb = 0, fps = 0, fpsN = 0, fpsT = 0, slow = 0, lastNow = 0;
 // Exact check each frame: an observer counts a hero that merely touches the screen edge as visible.
 function heroOnScreen() { const r = hero.getBoundingClientRect(); return r.bottom > 1 && r.top < innerHeight - 1; }
 function frame(now) {
@@ -510,7 +520,13 @@ function frame(now) {
   if (Math.abs(heroTarget - heroP) < 0.0004) heroP = heroTarget;
   if (heroVisible) drawHero(heroP);
   if (dbg && now - lastCrumb > 400) { lastCrumb = now; crumb(); }
-  if (dbg) dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}  decoded: ${seq ? seq.bmps.size : '-'}`;
+  if (dbg) {
+    fpsN++; if (now - fpsT > 1000) { fps = Math.round(fpsN * 1000 / (now - fpsT)); fpsN = 0; fpsT = now; }
+    if (lastNow && now - lastNow > 25) slow++;
+    lastNow = now;
+    dbg.textContent = dbg.dataset.base + `\nhero p: ${heroP.toFixed(3)}  decoded: ${seq ? seq.bmps.size : '-'}`
+      + `\nfps: ${fps}  slow frames: ${slow}` + (seq ? `  missed: ${seq.miss}  draw: ${seq.drawMs.toFixed(1)} ms` : '');
+  }
   chrome(m);
   if (placesVisible) drawProfile();
   if (sScene && sVisible) {
